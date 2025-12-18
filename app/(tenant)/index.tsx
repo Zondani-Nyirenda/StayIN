@@ -20,7 +20,7 @@ export default function TenantHomeScreen() {
 
   const handleLogout = async () => {
     await signOut();
-    router.replace('/(auth)/login');
+    router.replace('../(auth)/login');
   };
 
   const quickActions = [

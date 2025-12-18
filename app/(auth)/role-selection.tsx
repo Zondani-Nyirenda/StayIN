@@ -1,5 +1,6 @@
 // ========================================
 // FILE: app/(auth)/role-selection.tsx
+// POLISHED VERSION
 // ========================================
 import React from 'react';
 import {
@@ -66,7 +67,6 @@ export default function RoleSelectionScreen() {
           <Ionicons name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
 
-        {/* Logo */}
         <View style={styles.logoContainer}>
           <Image
             source={require('../../assets/images/stay.png')}
@@ -95,7 +95,7 @@ export default function RoleSelectionScreen() {
             style={[
               styles.roleCard,
               { 
-                borderColor: role.color,
+                borderColor: role.color + '40',
                 marginTop: index === 0 ? 0 : 16,
               }
             ]}
@@ -126,37 +126,10 @@ export default function RoleSelectionScreen() {
             </View>
 
             {/* Card Decoration */}
-            <View style={[styles.cardDecoration, { backgroundColor: role.color + '10' }]} />
+            <View style={[styles.cardDecoration, { backgroundColor: role.color + '08' }]} />
           </TouchableOpacity>
         ))}
       </View>
-
-      {/* Features */}
-      {/* <View style={styles.featuresContainer}>
-        <Text style={styles.featuresTitle}>Why Choose StayIN?</Text>
-        <View style={styles.featuresGrid}>
-          <View style={styles.featureItem}>
-            <View style={[styles.featureIcon, { backgroundColor: COLORS.primary + '15' }]}>
-              <Ionicons name="shield-checkmark" size={22} color={COLORS.primary} />
-            </View>
-            <Text style={styles.featureText}>Secure{'\n'}payments</Text>
-          </View>
-
-          <View style={styles.featureItem}>
-            <View style={[styles.featureIcon, { backgroundColor: COLORS.secondary + '15' }]}>
-              <Ionicons name="trending-up" size={22} color={COLORS.secondary} />
-            </View>
-            <Text style={styles.featureText}>Easy{'\n'}management</Text>
-          </View>
-
-          <View style={styles.featureItem}>
-            <View style={[styles.featureIcon, { backgroundColor: COLORS.accent + '15' }]}>
-              <Ionicons name="notifications" size={22} color={COLORS.accent} />
-            </View>
-            <Text style={styles.featureText}>Real-time{'\n'}alerts</Text>
-          </View>
-        </View>
-      </View> */}
 
       {/* Already have account */}
       <View style={styles.loginContainer}>
@@ -219,7 +192,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: -160,
     paddingHorizontal: 24,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   backButton: {
     position: 'absolute',
@@ -232,17 +205,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   logoImage: {
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
   },
   brandContainer: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   brandName: {
     fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   brandStay: {
     color: COLORS.white,
@@ -254,59 +227,59 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.white,
     opacity: 0.9,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.gray[900],
-    marginBottom: 6,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.gray[700],
-    opacity: 0.9,
+    color: COLORS.gray[600],
     textAlign: 'center',
     paddingHorizontal: 20,
   },
   rolesContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    paddingHorizontal: 24,
+    marginBottom: 28,
   },
   roleCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: 20,
+    padding: 20,
     borderWidth: 2,
     shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
     position: 'relative',
     overflow: 'hidden',
+    height: 183,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   cardHeaderText: {
     flex: 1,
   },
   roleTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.gray[900],
-    marginBottom: 3,
+    marginBottom: 4,
   },
   roleSubtitle: {
     fontSize: 13,
@@ -315,73 +288,38 @@ const styles = StyleSheet.create({
   roleDescription: {
     fontSize: 13,
     color: COLORS.gray[600],
-    lineHeight: 19,
-    marginBottom: 12,
+    lineHeight: 20,
+    marginBottom: 14,
   },
   arrowContainer: {
     alignItems: 'flex-end',
   },
   arrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardDecoration: {
     position: 'absolute',
-    width: 100,
+    width: 120,
     height: 100,
-    borderRadius: 50,
-    bottom: -30,
-    right: -30,
-    opacity: 0.5,
-  },
-  featuresContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  featuresTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: COLORS.gray[900],
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  featuresGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-  },
-  featureItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  featureText: {
-    fontSize: 11,
-    color: COLORS.gray[700],
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 15,
+    borderRadius: 60,
+    bottom: -40,
+    right: -40,
+    opacity: 0.6,
   },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 16,
+    paddingTop: 20,
     paddingBottom: 4,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray[200],
-    marginHorizontal: 20,
+    marginHorizontal: 24,
   },
   loginText: {
     color: COLORS.gray[600],

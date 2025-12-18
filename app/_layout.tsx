@@ -1,31 +1,57 @@
-import { useEffect } from 'react';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Stack, Redirect } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider } from '../contexts/AuthContext';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { ActivityIndicator, View } from 'react-native';
+import { useFonts } from 'expo-font';
+import databaseService from '../services/database';
 
-// Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const [loaded, error] = useFonts({
+function Bootstrap() {
+  const { user, loading: authLoading } = useAuth();
+  const [dbReady, setDbReady] = useState(false);
+
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   useEffect(() => {
-    if (loaded || error) {
+    async function init() {
+      await databaseService.init();
+      setDbReady(true);
+    }
+    init();
+  }, []);
+
+  const ready = fontsLoaded && dbReady && !authLoading && !fontError;
+
+  useEffect(() => {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [loaded, error]);
+  }, [ready]);
 
-  if (!loaded && !error) {
-    return null;
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
+  if (!user) return <Redirect href="/(auth)/login" />;
+
+  if (user.role === 'admin') return <Redirect href="/(admin)/dashboard" />;
+  if (user.role === 'landlord') return <Redirect href="/(landlord)/dashboard" />;
+  return <Redirect href="/(tenant)/dashboard" />;
+}
+
+export default function RootLayout() {
   return (
     <AuthProvider>
-      {/* Let expo-router auto-register routes from the filesystem */}
       <Stack screenOptions={{ headerShown: false }} />
+      <Bootstrap />
     </AuthProvider>
   );
 }
