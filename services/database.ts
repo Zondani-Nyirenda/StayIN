@@ -1,6 +1,6 @@
 // ========================================
 // FILE: services/database.ts
-// SQLite Database Setup and Management (Android Crash Fixed)
+// SQLite Database Setup with Agreements Table (No Sample Agreements)
 // ========================================
 import * as SQLite from 'expo-sqlite';
 
@@ -11,8 +11,6 @@ class DatabaseService {
 
   async init() {
     try {
-      // CRITICAL FIX FOR ANDROID: Forces a fresh native connection
-      // This resolves the NullPointerException in prepareAsync/runAsync
       this.db = await SQLite.openDatabaseAsync(DB_NAME, {
         useNewConnection: true
       });
@@ -126,6 +124,25 @@ class DatabaseService {
       );
     `);
 
+    // Agreements table
+    await this.db.execAsync(`
+      CREATE TABLE IF NOT EXISTS agreements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        property_id INTEGER NOT NULL,
+        tenant_id INTEGER NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'signed', 'active', 'expired', 'terminated')),
+        signed_date DATETIME,
+        signature_data TEXT,
+        terms TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties(id),
+        FOREIGN KEY (tenant_id) REFERENCES users(id)
+      );
+    `);
+
     // Sessions table for auth
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -144,7 +161,7 @@ class DatabaseService {
   private async seedDefaultData() {
     if (!this.db) throw new Error('Database not initialized');
 
-    // Check if admin exists
+    // Seed admin user
     const adminExists = await this.db.getFirstAsync(
       'SELECT id FROM users WHERE email = ?',
       ['admin@stayin.com']
@@ -167,6 +184,7 @@ class DatabaseService {
       console.log('✅ Default admin user created');
     }
 
+    // Seed test tenant
     const tenantExists = await this.db.getFirstAsync(
       'SELECT id FROM users WHERE email = ?',
       ['tenant@test.com']
@@ -188,6 +206,7 @@ class DatabaseService {
       console.log('✅ Test tenant user created');
     }
 
+    // Seed test landlord
     const landlordExists = await this.db.getFirstAsync(
       'SELECT id FROM users WHERE email = ?',
       ['landlord@test.com']
@@ -209,6 +228,9 @@ class DatabaseService {
       );
       console.log('✅ Test landlord user created');
     }
+
+    // REMOVED: No sample agreement seeding
+    console.log('✅ Default users seeded (no sample agreements)');
   }
 
   getDatabase(): SQLite.SQLiteDatabase {
@@ -229,6 +251,7 @@ class DatabaseService {
     
     await this.db.execAsync(`
       DROP TABLE IF EXISTS sessions;
+      DROP TABLE IF EXISTS agreements;
       DROP TABLE IF EXISTS maintenance_requests;
       DROP TABLE IF EXISTS payments;
       DROP TABLE IF EXISTS applications;

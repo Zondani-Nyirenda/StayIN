@@ -1,6 +1,6 @@
 // ========================================
 // FILE: services/tenantService.ts
-// Tenant-specific database operations
+// Tenant-specific database operations (FIXED: Lazy DB Access)
 // ========================================
 import DatabaseService from './database';
 
@@ -18,8 +18,8 @@ export interface Property {
   price_per_month: number;
   deposit_amount: number | null;
   status: 'available' | 'occupied' | 'maintenance' | 'inactive';
-  amenities: string[]; // parsed from JSON string
-  images: string[];    // parsed from JSON string
+  amenities: string[];
+  images: string[];
   latitude: number | null;
   longitude: number | null;
   created_at: string;
@@ -33,7 +33,7 @@ export interface TenantApplication {
   property_type: string;
   status: 'pending' | 'approved' | 'rejected';
   application_fee: number;
-  documents: string[]; // parsed JSON
+  documents: string[];
   notes: string | null;
   created_at: string;
 }
@@ -64,12 +64,27 @@ export interface MaintenanceRequest {
   updated_at: string;
 }
 
+export interface Agreement {
+  id: number;
+  property_id: number;
+  tenant_id: number;
+  property_title: string;
+  property_address: string;
+  landlord_name: string;
+  tenant_name: string;
+  rent_amount: number;
+  deposit_amount: number;
+  start_date: string;
+  end_date: string;
+  status: 'pending' | 'signed' | 'active' | 'expired';
+  signed_date: string | null;
+  signature_data: string | null;
+  terms: string[];
+  created_at: string;
+}
+
 class TenantService {
-  /**
-   * FIX: We use a getter instead of a direct property assignment.
-   * This prevents getDatabase() from being called before the app 
-   * has finished running databaseService.init().
-   */
+  // CRITICAL FIX: Use getter instead of property to avoid early initialization
   private get db() {
     return DatabaseService.getDatabase();
   }
@@ -236,7 +251,64 @@ class TenantService {
   }
 
   // ========================================
-  // ACTIVE RENTAL (for dashboard stats)
+  // DIGITAL AGREEMENTS
+  // ========================================
+  async getMyAgreements(tenantId: number): Promise<Agreement[]> {
+    const agreements = await this.db.getAllAsync<any>(`
+      SELECT 
+        a.*,
+        p.title as property_title,
+        p.address as property_address,
+        p.price_per_month as rent_amount,
+        p.deposit_amount,
+        u.full_name as landlord_name,
+        t.full_name as tenant_name
+      FROM agreements a
+      JOIN properties p ON a.property_id = p.id
+      JOIN users u ON p.owner_id = u.id
+      JOIN users t ON a.tenant_id = t.id
+      WHERE a.tenant_id = ?
+      ORDER BY a.created_at DESC
+    `, [tenantId]);
+
+    return agreements.map(a => ({
+      ...a,
+      terms: a.terms ? JSON.parse(a.terms) : [],
+    }));
+  }
+
+  async signAgreement(
+    agreementId: number,
+    signatureData: string
+  ): Promise<void> {
+    await this.db.runAsync(`
+      UPDATE agreements
+      SET status = 'signed',
+          signed_date = datetime('now'),
+          signature_data = ?
+      WHERE id = ?
+    `, [signatureData, agreementId]);
+  }
+
+  async createAgreement(
+    tenantId: number,
+    propertyId: number,
+    startDate: string,
+    endDate: string,
+    terms: string[]
+  ): Promise<number> {
+    const result = await this.db.runAsync(`
+      INSERT INTO agreements (
+        property_id, tenant_id, start_date, end_date, terms, 
+        status, created_at
+      ) VALUES (?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+    `, [propertyId, tenantId, startDate, endDate, JSON.stringify(terms)]);
+
+    return result.lastInsertRowId;
+  }
+
+  // ========================================
+  // DASHBOARD STATS
   // ========================================
   async getActiveRentalCount(tenantId: number): Promise<number> {
     const result = await this.db.getFirstAsync<any>(`

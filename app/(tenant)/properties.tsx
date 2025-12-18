@@ -1,4 +1,7 @@
-// app/(tenant)/properties.tsx
+// ========================================
+// FILE: app/(tenant)/properties.tsx
+// Tenant Browse Properties - Compact Chip Filter
+// ========================================
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -50,10 +53,26 @@ export default function PropertiesScreen() {
     }
   };
 
-  const renderProperty = ({ item }: { item: any }) => (
+  // Count properties by type
+  const getCount = (type: string) => {
+    if (type === 'all') return properties.length;
+    return properties.filter(p => p.property_type === type).length;
+  };
+
+  const getLabel = (type: string) => {
+    switch (type) {
+      case 'all': return 'All';
+      case 'residential': return 'Residential';
+      case 'student_boarding': return 'Student';
+      case 'commercial': return 'Commercial';
+      default: return type;
+    }
+  };
+
+  const renderProperty = ({ item }: { item: Property }) => (
     <TouchableOpacity
       style={styles.propertyCard}
-      onPress={() => router.push(`../property-detail?id=${item.id}`)} // we'll create this next
+      onPress={() => router.push(`../property-detail?id=${item.id}`)}
     >
       {item.images?.[0] ? (
         <Image source={{ uri: item.images[0] }} style={styles.propertyImage} />
@@ -87,33 +106,43 @@ export default function PropertiesScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Browse Properties</Text>
       </View>
 
-      {/* Filter Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {TYPES.map((type) => (
-          <TouchableOpacity
-            key={type}
-            style={[
-              styles.filterChip,
-              selectedType === type && styles.filterChipActive,
-            ]}
-            onPress={() => setSelectedType(type)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                selectedType === type && styles.filterTextActive,
-              ]}
-            >
-              {type === 'all' ? 'All' : type.replace('_', ' ')}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Compact Chip Filter with Counts */}
+      <View style={styles.filterWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          {TYPES.map((type) => {
+            const label = getLabel(type);
+            const count = getCount(type);
+            const isActive = selectedType === type;
 
+            return (
+              <TouchableOpacity
+                key={type}
+                style={[styles.compactChip, isActive && styles.compactChipActive]}
+                onPress={() => setSelectedType(type)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.compactChipText, isActive && styles.compactChipTextActive]}>
+                  {label}
+                </Text>
+                <Text style={[styles.compactChipCount, isActive && styles.compactChipCountActive]}>
+                  {count}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Properties List */}
       <FlatList
         data={properties}
         keyExtractor={(item) => item.id.toString()}
@@ -141,19 +170,56 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.gray[200],
   },
   title: { fontSize: 20, fontWeight: 'bold', color: COLORS.gray[900] },
-  filterRow: { paddingHorizontal: 20, paddingVertical: 12 },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+
+  // Compact Chip Filter
+  filterWrapper: {
+    paddingVertical: 12,
+    backgroundColor: COLORS.background,
+  },
+  filterContent: {
+    paddingHorizontal: 20,
+    gap: 8,
+    alignItems: 'center',
+  },
+  compactChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: COLORS.gray[100],
-    marginRight: 8,
     borderWidth: 1,
     borderColor: COLORS.gray[300],
+    gap: 6,
   },
-  filterChipActive: { backgroundColor: COLORS.primary },
-  filterText: { fontWeight: '600', color: COLORS.gray[700] },
-  filterTextActive: { color: COLORS.white },
+  compactChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  compactChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.gray[700],
+  },
+  compactChipTextActive: {
+    color: COLORS.white,
+  },
+  compactChipCount: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: COLORS.gray[500],
+    backgroundColor: COLORS.gray[100],
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  compactChipCountActive: {
+    color: COLORS.white,
+    backgroundColor: COLORS.white + '40',
+  },
+
   list: { padding: 20 },
   propertyCard: {
     backgroundColor: COLORS.white,

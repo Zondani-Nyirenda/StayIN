@@ -1,6 +1,6 @@
 // ========================================
 // FILE: app/(tenant)/maintenance.tsx
-// Submit and Track Maintenance Requests
+// Submit and Track Maintenance Requests - Stats as Chips
 // ========================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -38,7 +38,7 @@ export default function MaintenanceScreen() {
 
   const loadRequests = async () => {
     try {
-      const tenantId = 2; // Replace with actual logged-in user ID
+      const tenantId = 2; // Replace with actual logged-in tenant ID from auth
       const data = await TenantService.getMyMaintenanceRequests(tenantId);
       setRequests(data);
     } catch (error) {
@@ -70,7 +70,7 @@ export default function MaintenanceScreen() {
 
     if (!result.canceled && result.assets) {
       const uris = result.assets.map(asset => asset.uri);
-      setImages([...images, ...uris]);
+      setImages(prev => [...prev, ...uris].slice(0, 10)); // max 10
     }
   };
 
@@ -86,8 +86,8 @@ export default function MaintenanceScreen() {
     }
 
     try {
-      const tenantId = 2;
-      const propertyId = 1; // You'll need to track this
+      const tenantId = 2; // Replace with real tenant ID
+      const propertyId = 1; // In real app, track active rental
 
       await TenantService.submitMaintenanceRequest(
         tenantId,
@@ -104,6 +104,7 @@ export default function MaintenanceScreen() {
       loadRequests();
     } catch (error) {
       Alert.alert('Error', 'Failed to submit request');
+      console.error(error);
     }
   };
 
@@ -116,31 +117,21 @@ export default function MaintenanceScreen() {
 
   const getPriorityColor = (p: string) => {
     switch (p) {
-      case 'urgent':
-        return '#DC2626';
-      case 'high':
-        return '#EF4444';
-      case 'medium':
-        return '#F59E0B';
-      case 'low':
-        return '#10B981';
-      default:
-        return '#6B7280';
+      case 'urgent': return '#DC2626';
+      case 'high': return '#EF4444';
+      case 'medium': return '#F59E0B';
+      case 'low': return '#10B981';
+      default: return '#6B7280';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'open':
-        return '#3B82F6';
-      case 'in_progress':
-        return '#F59E0B';
-      case 'resolved':
-        return '#10B981';
-      case 'closed':
-        return '#6B7280';
-      default:
-        return '#6B7280';
+      case 'open': return '#3B82F6';
+      case 'in_progress': return '#F59E0B';
+      case 'resolved': return '#10B981';
+      case 'closed': return '#6B7280';
+      default: return '#6B7280';
     }
   };
 
@@ -171,37 +162,34 @@ export default function MaintenanceScreen() {
         <Text style={styles.headerSubtitle}>Report and track issues</Text>
       </View>
 
-      {/* Stats Cards */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.statsContainer}
-        contentContainerStyle={styles.statsContent}
-      >
-        <View style={[styles.statCard, styles.totalCard]}>
-          <Ionicons name="construct-outline" size={28} color="#4F46E5" />
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
+      {/* Stats as Compact Chips */}
+      <View style={styles.filterWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          <View style={styles.compactChip}>
+            <Text style={styles.compactChipText}>Total</Text>
+            <Text style={styles.compactChipCount}>{stats.total}</Text>
+          </View>
 
-        <View style={[styles.statCard, styles.openCard]}>
-          <Ionicons name="alert-circle-outline" size={28} color="#3B82F6" />
-          <Text style={styles.statNumber}>{stats.open}</Text>
-          <Text style={styles.statLabel}>Open</Text>
-        </View>
+          <View style={styles.compactChip}>
+            <Text style={styles.compactChipText}>Open</Text>
+            <Text style={styles.compactChipCount}>{stats.open}</Text>
+          </View>
 
-        <View style={[styles.statCard, styles.progressCard]}>
-          <Ionicons name="build-outline" size={28} color="#F59E0B" />
-          <Text style={styles.statNumber}>{stats.in_progress}</Text>
-          <Text style={styles.statLabel}>In Progress</Text>
-        </View>
+          <View style={styles.compactChip}>
+            <Text style={styles.compactChipText}>In Progress</Text>
+            <Text style={styles.compactChipCount}>{stats.in_progress}</Text>
+          </View>
 
-        <View style={[styles.statCard, styles.resolvedCard]}>
-          <Ionicons name="checkmark-circle-outline" size={28} color="#10B981" />
-          <Text style={styles.statNumber}>{stats.resolved}</Text>
-          <Text style={styles.statLabel}>Resolved</Text>
-        </View>
-      </ScrollView>
+          <View style={styles.compactChip}>
+            <Text style={styles.compactChipText}>Resolved</Text>
+            <Text style={styles.compactChipCount}>{stats.resolved}</Text>
+          </View>
+        </ScrollView>
+      </View>
 
       {/* Create Button */}
       <View style={styles.actionContainer}>
@@ -220,7 +208,7 @@ export default function MaintenanceScreen() {
             onPress={() => setFilter(f as any)}
           >
             <Text style={[styles.filterText, filter === f && styles.activeFilterText]}>
-              {f.replace('_', ' ')}
+              {f === 'all' ? 'All' : f.replace('_', ' ')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -244,7 +232,6 @@ export default function MaintenanceScreen() {
         ) : (
           filteredRequests.map((request) => (
             <View key={request.id} style={styles.requestCard}>
-              {/* Header */}
               <View style={styles.cardHeader}>
                 <View style={styles.titleContainer}>
                   <Text style={styles.requestTitle}>{request.title}</Text>
@@ -268,14 +255,12 @@ export default function MaintenanceScreen() {
                 </View>
               </View>
 
-              {/* Description */}
               {request.description && (
-                <Text style={styles.description} numberOfLines={2}>
+                <Text style={styles.description} numberOfLines={3}>
                   {request.description}
                 </Text>
               )}
 
-              {/* Images Preview */}
               {request.images.length > 0 && (
                 <View style={styles.imagesContainer}>
                   <Ionicons name="images-outline" size={14} color="#6B7280" />
@@ -285,7 +270,6 @@ export default function MaintenanceScreen() {
                 </View>
               )}
 
-              {/* Footer */}
               <View style={styles.cardFooter}>
                 <View style={styles.dateContainer}>
                   <Ionicons name="calendar-outline" size={14} color="#6B7280" />
@@ -322,12 +306,7 @@ export default function MaintenanceScreen() {
       </ScrollView>
 
       {/* Create Request Modal */}
-      <Modal
-        visible={showModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowModal(false)}
-      >
+      <Modal visible={showModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -338,7 +317,6 @@ export default function MaintenanceScreen() {
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {/* Title */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Title *</Text>
                 <TextInput
@@ -349,7 +327,6 @@ export default function MaintenanceScreen() {
                 />
               </View>
 
-              {/* Description */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Description *</Text>
                 <TextInput
@@ -363,7 +340,6 @@ export default function MaintenanceScreen() {
                 />
               </View>
 
-              {/* Priority */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Priority</Text>
                 <View style={styles.priorityGrid}>
@@ -383,23 +359,21 @@ export default function MaintenanceScreen() {
                           priority === p && { color: getPriorityColor(p) },
                         ]}
                       >
-                        {p}
+                        {p.charAt(0).toUpperCase() + p.slice(1)}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
 
-              {/* Images */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Photos ({images.length})</Text>
+                <Text style={styles.label}>Photos ({images.length}/10)</Text>
                 <TouchableOpacity style={styles.imageButton} onPress={handlePickImages}>
                   <Ionicons name="camera-outline" size={24} color="#4F46E5" />
                   <Text style={styles.imageButtonText}>Add Photos</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Submit Button */}
               <TouchableOpacity style={styles.submitButton} onPress={handleSubmitRequest}>
                 <Text style={styles.submitButtonText}>Submit Request</Text>
               </TouchableOpacity>
@@ -412,16 +386,8 @@ export default function MaintenanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     backgroundColor: '#FFFFFF',
     padding: 20,
@@ -429,49 +395,37 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  statsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  statsContent: {
-    padding: 16,
-    gap: 12,
-  },
-  statCard: {
-    width: 100,
-    padding: 16,
-    borderRadius: 12,
+  headerTitle: { fontSize: 28, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280' },
+
+  // Compact Stats Chips
+  filterWrapper: { paddingVertical: 12, backgroundColor: '#F9FAFB' },
+  filterContent: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
+  compactChip: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
     gap: 6,
   },
-  totalCard: { backgroundColor: '#EEF2FF' },
-  openCard: { backgroundColor: '#DBEAFE' },
-  progressCard: { backgroundColor: '#FEF3C7' },
-  resolvedCard: { backgroundColor: '#D1FAE5' },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  statLabel: {
+  compactChipText: { fontSize: 12, fontWeight: '600', color: '#4B5563' },
+  compactChipCount: {
     fontSize: 11,
+    fontWeight: 'bold',
     color: '#6B7280',
-    fontWeight: '500',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
+    textAlign: 'center',
   },
-  actionContainer: {
-    padding: 16,
-  },
+
+  actionContainer: { padding: 16 },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -486,11 +440,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  createButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+  createButtonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+
   filterContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -507,22 +458,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
   },
-  activeFilterTab: {
-    backgroundColor: '#4F46E5',
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'capitalize',
-  },
-  activeFilterText: {
-    color: '#FFFFFF',
-  },
-  listContainer: {
-    flex: 1,
-    padding: 16,
-  },
+  activeFilterTab: { backgroundColor: '#4F46E5' },
+  filterText: { fontSize: 12, fontWeight: '600', color: '#6B7280', textTransform: 'capitalize' },
+  activeFilterText: { color: '#FFFFFF' },
+
+  listContainer: { flex: 1, padding: 16 },
   requestCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -541,44 +481,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     gap: 12,
   },
-  titleContainer: {
-    flex: 1,
-  },
-  requestTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  propertyName: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  priorityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  description: {
-    fontSize: 14,
-    color: '#4B5563',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  imagesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  imagesText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
+  titleContainer: { flex: 1 },
+  requestTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 4 },
+  propertyName: { fontSize: 12, color: '#6B7280' },
+  priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  priorityText: { fontSize: 10, fontWeight: '700' },
+  description: { fontSize: 14, color: '#4B5563', lineHeight: 20, marginBottom: 12 },
+  imagesContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  imagesText: { fontSize: 12, color: '#6B7280' },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -587,60 +497,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
-  dateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dateText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 64,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-  },
+  dateContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dateText: { fontSize: 12, color: '#6B7280' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64, gap: 12 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -649,54 +517,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#1F2937',
-  },
-  textArea: {
-    height: 100,
-  },
-  priorityGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  priorityOption: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 2,
-    alignItems: 'center',
-  },
-  selectedPriority: {
-    backgroundColor: '#F9FAFB',
-  },
-  priorityOptionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'capitalize',
-  },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937' },
+  modalBody: { padding: 20 },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+  input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 15, color: '#1F2937' },
+  textArea: { height: 100 },
+  priorityGrid: { flexDirection: 'row', gap: 8 },
+  priorityOption: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 2, alignItems: 'center' },
+  selectedPriority: { backgroundColor: '#F9FAFB' },
+  priorityOptionText: { fontSize: 13, fontWeight: '600', color: '#6B7280', textTransform: 'capitalize' },
   imageButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -709,21 +539,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     backgroundColor: '#EEF2FF',
   },
-  imageButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  submitButton: {
-    backgroundColor: '#4F46E5',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+  imageButtonText: { fontSize: 14, fontWeight: '600', color: '#4F46E5' },
+  submitButton: { backgroundColor: '#4F46E5', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+  submitButtonText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
 });

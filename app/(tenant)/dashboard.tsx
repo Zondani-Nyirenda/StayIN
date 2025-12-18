@@ -1,6 +1,6 @@
 // ========================================
 // FILE: app/(tenant)/dashboard.tsx
-// Tenant Dashboard Home Screen
+// Tenant Dashboard - Clickable Colored Chips with Icons
 // ========================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -11,44 +11,48 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
 import TenantService from '../../services/tenantService';
-
-const { width } = Dimensions.get('window');
+import { COLORS } from '../../utils/constants';
 
 export default function TenantDashboard() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     activeRentals: 0,
     pendingApplications: 0,
-    maintenanceRequests: 0,
-    upcomingPayments: 1,
+    openMaintenance: 0,
+    upcomingPayments: 0,
   });
-  const [userName, setUserName] = useState('Test Tenant');
+
+  // Track which chip is selected (for blue highlight)
+  const [selectedChip, setSelectedChip] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
 
   const loadDashboardData = async () => {
+    if (!user?.id) return;
+
     try {
-      const tenantId = 2; // Replace with actual logged-in user ID
-      
-      const [activeRentals, pendingApps, maintenanceReqs] = await Promise.all([
-        TenantService.getActiveRentalCount(tenantId),
-        TenantService.getPendingApplicationsCount(tenantId),
-        TenantService.getMyMaintenanceRequests(tenantId),
+      const [activeRentals, pendingApps, maintenanceRequests] = await Promise.all([
+        TenantService.getActiveRentalCount(user.id),
+        TenantService.getPendingApplicationsCount(user.id),
+        TenantService.getMyMaintenanceRequests(user.id),
       ]);
 
       setStats({
         activeRentals,
         pendingApplications: pendingApps,
-        maintenanceRequests: maintenanceReqs.filter(r => r.status === 'open').length,
-        upcomingPayments: 1, // Example
+        openMaintenance: maintenanceRequests.filter(
+          r => r.status === 'open' || r.status === 'in_progress'
+        ).length,
+        upcomingPayments: 1, // Replace with real calculation later
       });
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -63,466 +67,245 @@ export default function TenantDashboard() {
     loadDashboardData();
   };
 
-  const quickActions = [
+  // Chip definitions with icon, label, count, color, and navigation
+  const overviewChips = [
     {
-      id: 'browse',
-      icon: 'home-outline',
-      label: 'Browse Properties',
-      route: '/(tenant)/properties',
-      color: '#4F46E5',
-      bgColor: '#EEF2FF',
+      key: 'rentals',
+      icon: 'home',
+      label: 'Active Rentals',
+      count: stats.activeRentals,
+      color: '#4F46E5', // Indigo
+      route: null, // No navigation yet
     },
     {
-      id: 'applications',
+      key: 'applications',
       icon: 'document-text-outline',
-      label: 'My Applications',
+      label: 'Pending Apps',
+      count: stats.pendingApplications,
+      color: '#F59E0B', // Amber
       route: '/(tenant)/applications',
-      color: '#F59E0B',
-      bgColor: '#FEF3C7',
     },
     {
-      id: 'payments',
-      icon: 'card-outline',
-      label: 'Payments',
-      route: '/(tenant)/payments',
-      color: '#10B981',
-      bgColor: '#D1FAE5',
-    },
-    {
-      id: 'maintenance',
+      key: 'maintenance',
       icon: 'construct-outline',
-      label: 'Maintenance',
+      label: 'Open Issues',
+      count: stats.openMaintenance,
+      color: '#EF4444', // Red
       route: '/(tenant)/maintenance',
-      color: '#EF4444',
-      bgColor: '#FEE2E2',
     },
+    {
+      key: 'payments',
+      icon: 'card-outline',
+      label: 'Due Soon',
+      count: stats.upcomingPayments,
+      color: '#10B981', // Green
+      route: '/(tenant)/payments',
+    },
+  ];
+
+  const quickActions = [
+    { icon: 'home-outline', label: 'Browse Properties', route: '/(tenant)/properties' },
+    { icon: 'document-text-outline', label: 'My Applications', route: '/(tenant)/applications' },
+    { icon: 'card-outline', label: 'Payments', route: '/(tenant)/payments' },
+    { icon: 'construct-outline', label: 'Maintenance', route: '/(tenant)/maintenance' },
   ];
 
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View>
-              <Text style={styles.greeting}>Welcome back,</Text>
-              <Text style={styles.userName}>{userName}</Text>
-            </View>
-            <TouchableOpacity style={styles.profileButton}>
-              <Ionicons name="person-circle" size={40} color="#4F46E5" />
-            </TouchableOpacity>
-          </View>
+    <ScrollView
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Welcome back,</Text>
+          <Text style={styles.userName}>{user?.fullName || 'Tenant'}</Text>
         </View>
+        <TouchableOpacity onPress={() => router.push('/(tenant)/profile')}>
+          <Ionicons name="person-circle-outline" size={40} color={COLORS.primary} />
+        </TouchableOpacity>
+      </View>
 
-        {/* Stats Cards */}
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, styles.activeCard]}>
-              <View style={styles.statIcon}>
-                <Ionicons name="home" size={24} color="#4F46E5" />
-              </View>
-              <Text style={styles.statNumber}>{stats.activeRentals}</Text>
-              <Text style={styles.statLabel}>Active Rentals</Text>
-            </View>
-
-            <View style={[styles.statCard, styles.pendingCard]}>
-              <View style={styles.statIcon}>
-                <Ionicons name="time" size={24} color="#F59E0B" />
-              </View>
-              <Text style={styles.statNumber}>{stats.pendingApplications}</Text>
-              <Text style={styles.statLabel}>Pending Apps</Text>
-            </View>
-
-            <View style={[styles.statCard, styles.maintenanceCard]}>
-              <View style={styles.statIcon}>
-                <Ionicons name="construct" size={24} color="#EF4444" />
-              </View>
-              <Text style={styles.statNumber}>{stats.maintenanceRequests}</Text>
-              <Text style={styles.statLabel}>Open Issues</Text>
-            </View>
-
-            <View style={[styles.statCard, styles.paymentCard]}>
-              <View style={styles.statIcon}>
-                <Ionicons name="calendar" size={24} color="#10B981" />
-              </View>
-              <Text style={styles.statNumber}>{stats.upcomingPayments}</Text>
-              <Text style={styles.statLabel}>Due Soon</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Next Payment Alert */}
-        {stats.upcomingPayments > 0 && (
-          <View style={styles.alertSection}>
-            <View style={styles.alertCard}>
-              <View style={styles.alertIcon}>
-                <Ionicons name="alert-circle" size={24} color="#F59E0B" />
-              </View>
-              <View style={styles.alertContent}>
-                <Text style={styles.alertTitle}>Rent Payment Due</Text>
-                <Text style={styles.alertText}>
-                  Your rent payment of K1,250 is due on January 5, 2025
-                </Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.alertButton}
-                onPress={() => router.push('/(tenant)/payments')}
-              >
-                <Text style={styles.alertButtonText}>Pay Now</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Quick Actions */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            {quickActions.map((action) => (
+      {/* Overview with Clickable Colored Chips */}
+      <View style={styles.statsSection}>
+        <Text style={styles.sectionTitle}>Overview</Text>
+        <View style={styles.chipsWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsContent}
+          >
+            {overviewChips.map((chip) => (
               <TouchableOpacity
-                key={action.id}
-                style={styles.actionCard}
-                onPress={() => router.push(action.route as any)}
+                key={chip.key}
+                style={[
+                  styles.compactChip,
+                  selectedChip === chip.key && styles.compactChipActive,
+                ]}
+                onPress={() => {
+                  setSelectedChip(chip.key);
+                  if (chip.route) {
+                    router.push(chip.route as any);
+                  }
+                }}
+                activeOpacity={0.7}
               >
-                <View style={[styles.actionIcon, { backgroundColor: action.bgColor }]}>
-                  <Ionicons name={action.icon as any} size={28} color={action.color} />
-                </View>
-                <Text style={styles.actionLabel}>{action.label}</Text>
+                <Ionicons name={chip.icon as any} size={16} color={chip.color} />
+                <Text
+                  style={[
+                    styles.compactChipText,
+                    selectedChip === chip.key && styles.compactChipTextActive,
+                  ]}
+                >
+                  {chip.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.compactChipCount,
+                    selectedChip === chip.key && styles.compactChipCountActive,
+                  ]}
+                >
+                  {chip.count}
+                </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
+      </View>
 
-        {/* Recent Activity */}
-        <View style={styles.activitySection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
+      {/* Quick Actions */}
+      <View style={styles.actionsSection}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.actionsGrid}>
+          {quickActions.map((action, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.actionCard}
+              onPress={() => router.push(action.route as any)}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons name={action.icon as any} size={28} color={COLORS.primary} />
+              </View>
+              <Text style={styles.actionLabel}>{action.label}</Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.activityCard}>
-            <View style={styles.activityIcon}>
-              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-            </View>
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>Payment Completed</Text>
-              <Text style={styles.activityText}>
-                Rent payment for December 2024
-              </Text>
-              <Text style={styles.activityTime}>2 days ago</Text>
-            </View>
-          </View>
-
-          <View style={styles.activityCard}>
-            <View style={styles.activityIcon}>
-              <Ionicons name="document-text" size={24} color="#3B82F6" />
-            </View>
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>Application Submitted</Text>
-              <Text style={styles.activityText}>
-                Modern 2BR Apartment in Lusaka
-              </Text>
-              <Text style={styles.activityTime}>5 days ago</Text>
-            </View>
-          </View>
-
-          <View style={styles.activityCard}>
-            <View style={styles.activityIcon}>
-              <Ionicons name="construct" size={24} color="#F59E0B" />
-            </View>
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>Maintenance Request</Text>
-              <Text style={styles.activityText}>
-                Leaking faucet - In Progress
-              </Text>
-              <Text style={styles.activityTime}>1 week ago</Text>
-            </View>
-          </View>
+          ))}
         </View>
+      </View>
 
-        {/* Tips Section */}
-        <View style={styles.tipsSection}>
-          <View style={styles.tipCard}>
-            <Ionicons name="bulb" size={24} color="#F59E0B" />
-            <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>Tip: Set up Auto-Pay</Text>
-              <Text style={styles.tipText}>
-                Never miss a rent payment by enabling automatic payments
-              </Text>
-            </View>
-          </View>
+      {/* Recent Activity Placeholder */}
+      <View style={styles.activitySection}>
+        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <View style={styles.activityPlaceholder}>
+          <Text style={styles.placeholderText}>
+            Your recent payments and applications will appear here
+          </Text>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
   header: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: COLORS.white,
     paddingTop: 60,
     paddingBottom: 24,
     paddingHorizontal: 20,
-  },
-  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray[200],
   },
-  greeting: {
-    fontSize: 14,
-    color: '#C7D2FE',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statsSection: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    width: (width - 52) / 2,
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  activeCard: {
-    backgroundColor: '#EEF2FF',
-  },
-  pendingCard: {
-    backgroundColor: '#FEF3C7',
-  },
-  maintenanceCard: {
-    backgroundColor: '#FEE2E2',
-  },
-  paymentCard: {
-    backgroundColor: '#D1FAE5',
-  },
-  statIcon: {
-    marginBottom: 12,
-  },
-  statNumber: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  alertSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  alertCard: {
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-    borderRadius: 12,
-    padding: 16,
+  greeting: { fontSize: 14, color: COLORS.gray[600] },
+  userName: { fontSize: 24, fontWeight: '700', color: COLORS.gray[900], marginTop: 4 },
+
+  statsSection: { padding: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.gray[900], marginBottom: 16 },
+
+  chipsWrapper: { marginBottom: 8 },
+  chipsContent: { gap: 8, paddingRight: 20, alignItems: 'center' },
+
+  compactChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  alertIcon: {
-    alignSelf: 'flex-start',
-  },
-  alertContent: {
-    flex: 1,
-  },
-  alertTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#92400E',
-    marginBottom: 4,
-  },
-  alertText: {
-    fontSize: 12,
-    color: '#92400E',
-    lineHeight: 16,
-  },
-  alertButton: {
-    backgroundColor: '#F59E0B',
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.gray[300],
+    gap: 8,
   },
-  alertButtonText: {
+  compactChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  compactChipText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  actionsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  actionCard: {
-    width: (width - 52) / 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  actionIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionLabel: {
-    fontSize: 13,
     fontWeight: '600',
-    color: '#1F2937',
+    color: COLORS.gray[700],
+  },
+  compactChipTextActive: {
+    color: COLORS.white,
+  },
+  compactChipCount: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: COLORS.gray[500],
+    backgroundColor: COLORS.gray[100],
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
     textAlign: 'center',
   },
-  activitySection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+  compactChipCountActive: {
+    color: COLORS.white,
+    backgroundColor: COLORS.white + '40',
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  activityCard: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: '#FFFFFF',
+
+  actionsSection: { paddingHorizontal: 20, paddingBottom: 24 },
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  actionCard: {
+    width: '48%',
+    backgroundColor: COLORS.white,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    padding: 20,
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray[200],
   },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+  actionIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.gray[100],
     justifyContent: 'center',
     alignItems: 'center',
   },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 2,
-  },
-  activityText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  activityTime: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  tipsSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-  },
-  tipCard: {
-    flexDirection: 'row',
-    gap: 12,
-    backgroundColor: '#FFFBEB',
+  actionLabel: { fontSize: 13, fontWeight: '600', color: COLORS.gray[900], textAlign: 'center' },
+
+  activitySection: { paddingHorizontal: 20, paddingBottom: 40 },
+  activityPlaceholder: {
+    backgroundColor: COLORS.white,
     borderRadius: 12,
-    padding: 16,
+    padding: 32,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: COLORS.gray[200],
   },
-  tipContent: {
-    flex: 1,
-  },
-  tipTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#92400E',
-    marginBottom: 4,
-  },
-  tipText: {
-    fontSize: 12,
-    color: '#92400E',
-    lineHeight: 16,
-  },
+  placeholderText: { fontSize: 14, color: COLORS.gray[500], textAlign: 'center' },
 });
