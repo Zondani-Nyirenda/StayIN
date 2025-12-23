@@ -1,6 +1,7 @@
 // ========================================
 // FILE: app/(landlord)/applications.tsx
-// FIXED: Cross-platform approve/reject with TextInput modal
+// Applications - StayIN Branded Gradient Header
+// FIXED: Text strings must be rendered within a <Text> component
 // ========================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -16,11 +17,19 @@ import {
   FlatList,
   TextInput,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
 import LandlordService, { ApplicationDetail } from '../../services/landlordService';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// StayIN Brand Colors
+const STAYIN = {
+  primaryBlue: '#1E40AF',
+  white: '#FFFFFF',
+};
 
 export default function ApplicationsScreen() {
   const router = useRouter();
@@ -33,7 +42,7 @@ export default function ApplicationsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentImages, setCurrentImages] = useState<string[]>([]);
 
-  // Notes Input Modal (FIXED for cross-platform)
+  // Notes Input Modal
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [notesInput, setNotesInput] = useState('');
   const [currentApplicationId, setCurrentApplicationId] = useState<number | null>(null);
@@ -114,7 +123,6 @@ export default function ApplicationsScreen() {
         notesInput.trim() || undefined
       );
 
-      // Success! Reload the list
       await loadApplications();
 
       Alert.alert(
@@ -190,256 +198,284 @@ export default function ApplicationsScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={STAYIN.primaryBlue} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.gray[900]} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Applications</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <>
+      <StatusBar style="light" backgroundColor="transparent" translucent />
 
-      {/* Status Filter Chips */}
-      <View style={styles.filterWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
-          {['pending', 'approved', 'rejected', 'all'].map((status) => {
-            const label = status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1);
-            const count = getCount(status);
-            const isActive = selectedStatus === status;
-
-            return (
-              <TouchableOpacity
-                key={status}
-                style={[styles.compactChip, isActive && styles.compactChipActive]}
-                onPress={() => setSelectedStatus(status)}
-              >
-                <Text style={[styles.compactChipText, isActive && styles.compactChipTextActive]}>
-                  {label}
-                </Text>
-                <Text style={[styles.compactChipCount, isActive && styles.compactChipCountActive]}>
-                  {count}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Applications List */}
-      <ScrollView style={styles.content}>
-        {applications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={64} color={COLORS.gray[300]} />
-            <Text style={styles.emptyStateText}>
-              {selectedStatus === 'pending' ? 'No pending applications' : `No ${selectedStatus} applications`}
-            </Text>
-          </View>
-        ) : (
-          applications.map((application) => (
-            <View key={application.id} style={styles.applicationCard}>
-              <View style={styles.applicationHeader}>
-                <View style={styles.tenantAvatar}>
-                  <Ionicons name="person" size={24} color={COLORS.primary} />
-                </View>
-                <View style={styles.applicationInfo}>
-                  <Text style={styles.tenantName}>{application.tenant_name}</Text>
-                  <Text style={styles.propertyTitle} numberOfLines={1}>
-                    {application.property_title}
-                  </Text>
-                  <Text style={styles.applicationDate}>
-                    Applied {new Date(application.created_at).toLocaleDateString()}
-                  </Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.status) + '15' }]}>
-                  <Ionicons name={getStatusIcon(application.status) as any} size={16} color={getStatusColor(application.status)} />
-                </View>
-              </View>
-
-              <View style={styles.contactInfo}>
-                <View style={styles.contactItem}>
-                  <Ionicons name="mail-outline" size={14} color={COLORS.gray[600]} />
-                  <Text style={styles.contactText}>{application.tenant_email}</Text>
-                </View>
-                <View style={styles.contactItem}>
-                  <Ionicons name="call-outline" size={14} color={COLORS.gray[600]} />
-                  <Text style={styles.contactText}>{application.tenant_phone}</Text>
-                </View>
-              </View>
-
-              <View style={styles.feeRow}>
-                <Text style={styles.feeLabel}>Application Fee:</Text>
-                <Text style={styles.feeAmount}>K{application.application_fee}</Text>
-              </View>
-
-              {application.notes && (
-                <View style={styles.notesSection}>
-                  <Text style={styles.notesLabel}>Notes:</Text>
-                  <Text style={styles.notesText}>{application.notes}</Text>
-                </View>
-              )}
-
-              <View style={[styles.statusBar, { backgroundColor: getStatusColor(application.status) + '10' }]}>
-                <Ionicons name={getStatusIcon(application.status) as any} size={16} color={getStatusColor(application.status)} />
-                <Text style={[styles.statusText, { color: getStatusColor(application.status) }]}>
-                  {application.status.toUpperCase()}
-                </Text>
-              </View>
-
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionButton} onPress={() => viewTenantDetails(application)}>
-                  <Ionicons name="information-circle-outline" size={18} color={COLORS.info} />
-                  <Text style={styles.actionButtonText}>Details</Text>
-                </TouchableOpacity>
-
-                {application.status === 'pending' && (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.approveButton]}
-                      onPress={() => handleApprove(application)}
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.white} />
-                      <Text style={[styles.actionButtonText, { color: COLORS.white }]}>Approve</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.rejectButton]}
-                      onPress={() => handleReject(application)}
-                    >
-                      <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
-                      <Text style={[styles.actionButtonText, { color: COLORS.white }]}>Reject</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {application.status === 'approved' && (
-                  <View style={styles.approvedBadge}>
-                    <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-                    <Text style={styles.approvedText}>Approved</Text>
-                  </View>
-                )}
-
-                {application.status === 'rejected' && (
-                  <View style={styles.rejectedBadge}>
-                    <Ionicons name="close-circle" size={16} color={COLORS.error} />
-                    <Text style={styles.rejectedText}>Rejected</Text>
-                  </View>
-                )}
-              </View>
-
-              {application.documents && (
-                <TouchableOpacity
-                  style={styles.documentsButton}
-                  onPress={() => viewDocuments(application.documents)}
-                >
-                  <Ionicons name="document-attach-outline" size={16} color={COLORS.primary} />
-                  <Text style={styles.documentsText}>
-                    View Documents ({JSON.parse(application.documents)?.length || 0})
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))
-        )}
-      </ScrollView>
-
-      {/* Notes Input Modal - FIXED FOR CROSS-PLATFORM */}
-      <Modal visible={notesModalVisible} transparent animationType="fade">
-        <View style={styles.notesModalOverlay}>
-          <View style={styles.notesModalContent}>
-            <Text style={styles.notesModalTitle}>
-              {currentAction === 'approved' ? 'Approval Notes (Optional)' : 'Rejection Reason (Optional)'}
-            </Text>
-            <Text style={styles.notesModalSubtitle}>
-              Add a message for the tenant:
-            </Text>
-            
-            <TextInput
-              style={styles.notesTextInput}
-              placeholder="Enter notes here..."
-              placeholderTextColor={COLORS.gray[400]}
-              value={notesInput}
-              onChangeText={setNotesInput}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-
-            <View style={styles.notesModalButtons}>
-              <TouchableOpacity
-                style={[styles.notesModalButton, styles.cancelButton]}
-                onPress={() => {
-                  setNotesModalVisible(false);
-                  setCurrentApplicationId(null);
-                  setCurrentAction(null);
-                  setNotesInput('');
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.notesModalButton, styles.submitButton]}
-                onPress={submitDecision}
-              >
-                <Text style={styles.submitButtonText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Document Viewer Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Application Documents</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Ionicons name="close" size={28} color={COLORS.white} />
+      <View style={styles.container}>
+        {/* StayIN Gradient Header */}
+        <LinearGradient
+          colors={[STAYIN.primaryBlue, '#0F172A']}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={28} color={STAYIN.white} />
             </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>Applications</Text>
+
+            <View style={{ width: 28 }} /> {/* Spacer */}
           </View>
-          <FlatList
-            data={currentImages}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(_, i) => i.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.imageContainer}>
-                <Image source={{ uri: item }} style={styles.fullImage} resizeMode="contain" />
-              </View>
-            )}
-          />
+        </LinearGradient>
+
+        {/* Status Filter Chips */}
+        <View style={styles.filterWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
+            {['pending', 'approved', 'rejected', 'all'].map((status) => {
+              const label = status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1);
+              const count = getCount(status);
+              const isActive = selectedStatus === status;
+
+              return (
+                <TouchableOpacity
+                  key={status}
+                  style={[styles.compactChip, isActive && styles.compactChipActive]}
+                  onPress={() => setSelectedStatus(status)}
+                >
+                  <Text style={[styles.compactChipText, isActive && styles.compactChipTextActive]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.compactChipCount, isActive && styles.compactChipCountActive]}>
+                    {count}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
-      </Modal>
-    </View>
+
+        {/* Applications List */}
+        <ScrollView style={styles.content}>
+          {applications.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-text-outline" size={64} color={COLORS.gray[300]} />
+              <Text style={styles.emptyStateText}>
+                {selectedStatus === 'pending' ? 'No pending applications' : `No ${selectedStatus} applications`}
+              </Text>
+            </View>
+          ) : (
+            applications.map((application) => (
+              <View key={application.id} style={styles.applicationCard}>
+                <View style={styles.applicationHeader}>
+                  <View style={styles.tenantAvatar}>
+                    <Ionicons name="person" size={24} color={COLORS.primary} />
+                  </View>
+                  <View style={styles.applicationInfo}>
+                    <Text style={styles.tenantName}>{application.tenant_name}</Text>
+                    <Text style={styles.propertyTitle} numberOfLines={1}>
+                      {application.property_title}
+                    </Text>
+                    <Text style={styles.applicationDate}>
+                      Applied {new Date(application.created_at).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.status) + '15' }]}>
+                    <Ionicons name={getStatusIcon(application.status) as any} size={16} color={getStatusColor(application.status)} />
+                  </View>
+                </View>
+
+                <View style={styles.contactInfo}>
+                  <View style={styles.contactItem}>
+                    <Ionicons name="mail-outline" size={14} color={COLORS.gray[600]} />
+                    <Text style={styles.contactText}>{application.tenant_email}</Text>
+                  </View>
+                  <View style={styles.contactItem}>
+                    <Ionicons name="call-outline" size={14} color={COLORS.gray[600]} />
+                    <Text style={styles.contactText}>{application.tenant_phone}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.feeRow}>
+                  <Text style={styles.feeLabel}>Application Fee:</Text>
+                  <Text style={styles.feeAmount}>K{application.application_fee}</Text>
+                </View>
+
+                {application.notes && (
+                  <View style={styles.notesSection}>
+                    <Text style={styles.notesLabel}>Notes:</Text>
+                    <Text style={styles.notesText}>{application.notes}</Text>
+                  </View>
+                )}
+
+                <View style={[styles.statusBar, { backgroundColor: getStatusColor(application.status) + '10' }]}>
+                  <Ionicons name={getStatusIcon(application.status) as any} size={16} color={getStatusColor(application.status)} />
+                  <Text style={[styles.statusText, { color: getStatusColor(application.status) }]}>
+                    {application.status.toUpperCase()}
+                  </Text>
+                </View>
+
+                {/* FIXED ACTION ROW - Single conditional, consistent layout */}
+                <View style={styles.actionRow}>
+                  <TouchableOpacity style={styles.actionButton} onPress={() => viewTenantDetails(application)}>
+                    <Ionicons name="information-circle-outline" size={18} color={COLORS.info} />
+                    <Text style={styles.actionButtonText}>Details</Text>
+                  </TouchableOpacity>
+
+                  {application.status === 'pending' ? (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.approveButton]}
+                        onPress={() => handleApprove(application)}
+                      >
+                        <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.white} />
+                        <Text style={[styles.actionButtonText, { color: COLORS.white }]}>Approve</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.rejectButton]}
+                        onPress={() => handleReject(application)}
+                      >
+                        <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
+                        <Text style={[styles.actionButtonText, { color: COLORS.white }]}>Reject</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : application.status === 'approved' ? (
+                    <View style={[styles.actionButton, styles.statusBadgeView]}>
+                      <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                      <Text style={[styles.actionButtonText, styles.statusTextApproved]}>Approved</Text>
+                    </View>
+                  ) : application.status === 'rejected' ? (
+                    <View style={[styles.actionButton, styles.statusBadgeView]}>
+                      <Ionicons name="close-circle" size={18} color={COLORS.error} />
+                      <Text style={[styles.actionButtonText, styles.statusTextRejected]}>Rejected</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {application.documents && (
+                  <TouchableOpacity
+                    style={styles.documentsButton}
+                    onPress={() => viewDocuments(application.documents)}
+                  >
+                    <Ionicons name="document-attach-outline" size={16} color={COLORS.primary} />
+                    <Text style={styles.documentsText}>
+                      View Documents ({JSON.parse(application.documents)?.length || 0})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))
+          )}
+        </ScrollView>
+
+        {/* Notes Input Modal */}
+        <Modal visible={notesModalVisible} transparent animationType="fade">
+          <View style={styles.notesModalOverlay}>
+            <View style={styles.notesModalContent}>
+              <Text style={styles.notesModalTitle}>
+                {currentAction === 'approved' ? 'Approval Notes (Optional)' : 'Rejection Reason (Optional)'}
+              </Text>
+              <Text style={styles.notesModalSubtitle}>
+                Add a message for the tenant:
+              </Text>
+              
+              <TextInput
+                style={styles.notesTextInput}
+                placeholder="Enter notes here..."
+                placeholderTextColor={COLORS.gray[400]}
+                value={notesInput}
+                onChangeText={setNotesInput}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              <View style={styles.notesModalButtons}>
+                <TouchableOpacity
+                  style={[styles.notesModalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setNotesModalVisible(false);
+                    setCurrentApplicationId(null);
+                    setCurrentAction(null);
+                    setNotesInput('');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.notesModalButton, styles.submitButton]}
+                  onPress={submitDecision}
+                >
+                  <Text style={styles.submitButtonText}>Submit</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Document Viewer Modal */}
+        <Modal visible={modalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Application Documents</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={28} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={currentImages}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(_, i) => i.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: item }} style={styles.fullImage} resizeMode="contain" />
+                </View>
+              )}
+            />
+          </View>
+        </Modal>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  centered: { justifyContent: 'center', alignItems: 'center', flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[200],
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  backButton: { padding: 4 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.gray[900] },
-  filterWrapper: { paddingVertical: 12, backgroundColor: COLORS.background },
-  filterContent: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  // Header
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: STAYIN.white,
+  },
+
+  // Filters
+  filterWrapper: {
+    paddingVertical: 12,
+    backgroundColor: COLORS.background,
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+    alignItems: 'center',
+  },
   compactChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,9 +487,18 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gray[300],
     gap: 6,
   },
-  compactChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  compactChipText: { fontSize: 12, fontWeight: '600', color: COLORS.gray[700] },
-  compactChipTextActive: { color: COLORS.white },
+  compactChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  compactChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.gray[700],
+  },
+  compactChipTextActive: {
+    color: COLORS.white,
+  },
   compactChipCount: {
     fontSize: 11,
     fontWeight: 'bold',
@@ -465,10 +510,25 @@ const styles = StyleSheet.create({
     minWidth: 20,
     textAlign: 'center',
   },
-  compactChipCountActive: { color: COLORS.white, backgroundColor: COLORS.white + '40' },
-  content: { flex: 1, paddingHorizontal: 16 },
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyStateText: { marginTop: 16, fontSize: 16, color: COLORS.gray[500] },
+  compactChipCountActive: {
+    color: COLORS.white,
+    backgroundColor: COLORS.white + '40',
+  },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.gray[500],
+  },
+
   applicationCard: {
     backgroundColor: COLORS.white,
     padding: 16,
@@ -477,7 +537,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.gray[200],
   },
-  applicationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  applicationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   tenantAvatar: {
     width: 48,
     height: 48,
@@ -487,14 +551,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  applicationInfo: { flex: 1 },
-  tenantName: { fontSize: 16, fontWeight: 'bold', color: COLORS.gray[900] },
-  propertyTitle: { fontSize: 13, color: COLORS.gray[600], marginTop: 2 },
-  applicationDate: { fontSize: 11, color: COLORS.gray[500], marginTop: 2 },
-  statusBadge: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  contactInfo: { marginBottom: 12 },
-  contactItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 6 },
-  contactText: { fontSize: 12, color: COLORS.gray[700] },
+  applicationInfo: {
+    flex: 1,
+  },
+  tenantName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.gray[900],
+  },
+  propertyTitle: {
+    fontSize: 13,
+    color: COLORS.gray[600],
+    marginTop: 2,
+  },
+  applicationDate: {
+    fontSize: 11,
+    color: COLORS.gray[500],
+    marginTop: 2,
+  },
+  statusBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactInfo: {
+    marginBottom: 12,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  contactText: {
+    fontSize: 12,
+    color: COLORS.gray[700],
+  },
   feeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -504,11 +598,31 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
   },
-  feeLabel: { fontSize: 13, color: COLORS.gray[600] },
-  feeAmount: { fontSize: 16, fontWeight: 'bold', color: COLORS.primary },
-  notesSection: { backgroundColor: COLORS.info + '10', padding: 10, borderRadius: 8, marginBottom: 12 },
-  notesLabel: { fontSize: 11, fontWeight: '600', color: COLORS.gray[600], marginBottom: 4 },
-  notesText: { fontSize: 12, color: COLORS.gray[700] },
+  feeLabel: {
+    fontSize: 13,
+    color: COLORS.gray[600],
+  },
+  feeAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  notesSection: {
+    backgroundColor: COLORS.info + '10',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  notesLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.gray[600],
+    marginBottom: 4,
+  },
+  notesText: {
+    fontSize: 12,
+    color: COLORS.gray[700],
+  },
   statusBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -518,25 +632,48 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 6,
   },
-  statusText: { fontSize: 12, fontWeight: 'bold' },
-  actionRow: { flexDirection: 'row', gap: 8 },
+  statusText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
+  // Action Row & Buttons
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 8,
     backgroundColor: COLORS.gray[100],
-    gap: 4,
+    gap: 6,
   },
-  approveButton: { backgroundColor: COLORS.success },
-  rejectButton: { backgroundColor: COLORS.error },
-  actionButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.gray[700] },
-  approvedBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  approvedText: { fontSize: 13, fontWeight: '600', color: COLORS.success },
-  rejectedBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  rejectedText: { fontSize: 13, fontWeight: '600', color: COLORS.error },
+  approveButton: {
+    backgroundColor: COLORS.success,
+  },
+  rejectButton: {
+    backgroundColor: COLORS.error,
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.gray[700],
+  },
+  statusBadgeView: {
+    backgroundColor: COLORS.gray[100],
+  },
+  statusTextApproved: {
+    color: COLORS.success,
+  },
+  statusTextRejected: {
+    color: COLORS.error,
+  },
+
   documentsButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,9 +684,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 6,
   },
-  documentsText: { fontSize: 12, fontWeight: '600', color: COLORS.primary },
-  
-  // Notes Modal Styles - NEW
+  documentsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+
+  // Notes Modal
   notesModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -611,8 +752,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.white,
   },
-  
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' },
+
+  // Document Viewer
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -620,7 +766,19 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 50,
   },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.white },
-  imageContainer: { width: 400, height: 600, justifyContent: 'center', alignItems: 'center' },
-  fullImage: { width: '100%', height: '100%' },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 600,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: '100%',
+    height: '100%',
+  },
 });

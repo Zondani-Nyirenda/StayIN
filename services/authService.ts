@@ -1,6 +1,6 @@
 // ========================================
 // FILE: services/authService.ts
-// SQLite-based Authentication Service - WITH DEBUG
+// Fixed Authentication Service with Profile Image
 // ========================================
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import databaseService from './database';  
@@ -11,9 +11,11 @@ export interface UserData {
   email: string;
   fullName: string;
   phoneNumber: string | null;
+  profileImage: string | null;
   role: 'tenant' | 'landlord' | 'admin';
   status: string;
   kycVerified: boolean;
+  createdAt: string;
 }
 
 interface LoginResult {
@@ -39,14 +41,6 @@ class AuthService {
   private readonly AUTH_TOKEN_KEY = '@stayin_auth_token';
   private readonly USER_DATA_KEY = '@stayin_user_data';
 
-  private async hashPassword(password: string): Promise<string> {
-    const digest = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      password
-    );
-    return digest;
-  }
-
   private async generateToken(): Promise<string> {
     const randomBytes = await Crypto.getRandomBytesAsync(32);
     return Array.from(randomBytes)
@@ -60,7 +54,7 @@ class AuthService {
       const db = databaseService.getDatabase();
 
       const user = await db.getFirstAsync<any>(
-        `SELECT id, email, password, full_name, phone_number, role, status, kyc_verified
+        `SELECT id, email, password, full_name, phone_number, profile_image, role, status, kyc_verified, created_at
          FROM users 
          WHERE email = ? AND status = 'active'`,
         [email.toLowerCase()]
@@ -81,7 +75,7 @@ class AuthService {
         status: user.status
       });
 
-      // Direct password comparison (no hashing since database has plain text)
+      // Direct password comparison
       if (user.password !== password) {
         console.log('❌ Password mismatch for:', email);
         return {
@@ -108,9 +102,11 @@ class AuthService {
         email: user.email,
         fullName: user.full_name,
         phoneNumber: user.phone_number,
+        profileImage: user.profile_image,
         role: user.role,
         status: user.status,
         kycVerified: user.kyc_verified === 1,
+        createdAt: user.created_at,
       };
 
       await AsyncStorage.setItem(this.AUTH_TOKEN_KEY, token);
@@ -186,7 +182,7 @@ class AuthService {
 
       const session = await db.getFirstAsync<any>(
         `SELECT s.user_id, s.expires_at, 
-                u.email, u.full_name, u.phone_number, u.role, u.status, u.kyc_verified
+                u.email, u.full_name, u.phone_number, u.profile_image, u.role, u.status, u.kyc_verified, u.created_at
          FROM sessions s
          JOIN users u ON s.user_id = u.id
          WHERE s.token = ? AND s.expires_at > datetime('now')`,
@@ -201,15 +197,22 @@ class AuthService {
 
       console.log('✅ Current user session valid:', session.email, session.role);
 
-      return {
+      const userData: UserData = {
         id: session.user_id,
         email: session.email,
         fullName: session.full_name,
         phoneNumber: session.phone_number,
+        profileImage: session.profile_image,
         role: session.role,
         status: session.status,
         kycVerified: session.kyc_verified === 1,
+        createdAt: session.created_at,
       };
+
+      // Update AsyncStorage with latest data
+      await AsyncStorage.setItem(this.USER_DATA_KEY, JSON.stringify(userData));
+
+      return userData;
     } catch (error) {
       console.error('❌ Get current user error:', error);
       return null;
@@ -245,6 +248,39 @@ class AuthService {
       console.log('✅ Expired sessions cleaned');
     } catch (error) {
       console.error('❌ Clean sessions error:', error);
+    }
+  }
+
+  async refreshUserData(userId: number): Promise<UserData | null> {
+    try {
+      const db = databaseService.getDatabase();
+      
+      const user = await db.getFirstAsync<any>(
+        `SELECT id, email, full_name, phone_number, profile_image, role, status, kyc_verified, created_at
+         FROM users WHERE id = ?`,
+        [userId]
+      );
+
+      if (!user) return null;
+
+      const userData: UserData = {
+        id: user.id,
+        email: user.email,
+        fullName: user.full_name,
+        phoneNumber: user.phone_number,
+        profileImage: user.profile_image,
+        role: user.role,
+        status: user.status,
+        kycVerified: user.kyc_verified === 1,
+        createdAt: user.created_at,
+      };
+
+      await AsyncStorage.setItem(this.USER_DATA_KEY, JSON.stringify(userData));
+      
+      return userData;
+    } catch (error) {
+      console.error('❌ Refresh user data error:', error);
+      return null;
     }
   }
 }

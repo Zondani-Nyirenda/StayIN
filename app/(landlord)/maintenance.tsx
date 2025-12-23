@@ -1,33 +1,77 @@
-// app/(landlord)/maintenance.tsx
+// ========================================
+// FILE: app/(landlord)/maintenance.tsx
+// Maintenance Requests - Full Image Gallery + Better UX
+// ========================================
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  Image,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
 import { useAuth } from '../../contexts/AuthContext';
 import LandlordService, { MaintenanceRequest } from '../../services/landlordService';
+import { LinearGradient } from 'expo-linear-gradient';
 
-const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// StayIN Brand Colors
+const STAYIN = {
+  primaryBlue: '#1E40AF',
+  white: '#FFFFFF',
+};
+
+const STATUS_OPTIONS = ['open', 'in_progress', 'resolved', 'closed'] as const;
 
 export default function MaintenanceScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [requests, setRequests] = useState<MaintenanceRequest[]>([]); // ← Fixed: explicit type
+  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Image Gallery Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [initialIndex, setInitialIndex] = useState(0);
 
   useEffect(() => {
     loadRequests();
   }, []);
 
-  const loadRequests = async () => {
+  const loadRequests = async (isRefresh = false) => {
+    if (!user?.id) return;
+
     try {
-      const data = await LandlordService.getMaintenanceRequests(user!.id);
+      isRefresh ? setRefreshing(true) : setLoading(true);
+      const data = await LandlordService.getMaintenanceRequests(user.id);
       setRequests(data);
     } catch (error) {
       Alert.alert('Error', 'Failed to load maintenance requests');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const onRefresh = () => loadRequests(true);
+
+  const openImageGallery = (images: string[], index: number) => {
+    setSelectedImages(images);
+    setInitialIndex(index);
+    setModalVisible(true);
   };
 
   const updateStatus = async (requestId: number, currentStatus: string) => {
@@ -41,7 +85,7 @@ export default function MaintenanceScreen() {
             try {
               await LandlordService.updateMaintenanceStatus(requestId, user!.id, status);
               loadRequests();
-              Alert.alert('Success', 'Status updated');
+              Alert.alert('Success', 'Status updated successfully');
             } catch (error) {
               Alert.alert('Error', 'Failed to update status');
             }
@@ -61,128 +105,343 @@ export default function MaintenanceScreen() {
     }
   };
 
-  const renderRequest = ({ item }: { item: MaintenanceRequest }) => ( // ← Fixed: typed item
-    <View style={styles.requestCard}>
-      <View style={styles.requestHeader}>
-        <View>
-          <Text style={styles.requestTitle}>{item.title}</Text>
-          <Text style={styles.property}>{item.property_title}</Text>
-          <Text style={styles.tenant}>Reported by: {item.tenant_name}</Text>
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return COLORS.error;
+      case 'in_progress': return COLORS.warning;
+      case 'resolved': return COLORS.success;
+      case 'closed': return COLORS.gray[600];
+      default: return COLORS.primary;
+    }
+  };
+
+  const renderRequest = ({ item }: { item: MaintenanceRequest }) => {
+    const images: string[] = item.images ? JSON.parse(item.images) : [];
+    const displayedImages = images.slice(0, 4);
+    const remainingCount = images.length > 4 ? images.length - 4 : 0;
+
+    return (
+      <View style={styles.requestCard}>
+        <View style={styles.requestHeader}>
+          <View>
+            <Text style={styles.requestTitle}>{item.title}</Text>
+            <Text style={styles.property}>{item.property_title}</Text>
+            <Text style={styles.tenant}>Reported by: {item.tenant_name}</Text>
+          </View>
+          <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) + '20' }]}>
+            <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
+              {item.priority.toUpperCase()}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) + '20' }]}>
-          <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
-            {item.priority.toUpperCase()}
+
+        <Text style={styles.description}>{item.description || 'No description provided'}</Text>
+
+        {images.length > 0 && (
+          <View style={styles.imagesGrid}>
+            {displayedImages.map((uri: string, idx: number) => (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => openImageGallery(images, idx)}
+                style={styles.imageWrapper}
+              >
+                <Image source={{ uri }} style={styles.gridImage} />
+                {idx === 3 && remainingCount > 0 && (
+                  <View style={styles.moreOverlay}>
+                    <Text style={styles.moreText}>+{remainingCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.footer}>
+          <Text style={styles.date}>
+            {new Date(item.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
           </Text>
+
+          <TouchableOpacity
+            style={[styles.statusButton, { borderColor: getStatusColor(item.status) }]}
+            onPress={() => updateStatus(item.id, item.status)}
+          >
+            <Text style={[styles.statusButtonText, { color: getStatusColor(item.status) }]}>
+              {item.status.replace('_', ' ').toUpperCase()}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={getStatusColor(item.status)} />
+          </TouchableOpacity>
         </View>
       </View>
+    );
+  };
 
-      <Text style={styles.description}>{item.description || 'No description'}</Text>
-
-      {item.images && JSON.parse(item.images).length > 0 && (
-        <View style={styles.imagesRow}>
-          {JSON.parse(item.images).slice(0, 3).map((uri: string, idx: number) => (
-            <Image key={idx} source={{ uri }} style={styles.requestImage} />
-          ))}
-        </View>
-      )}
-
-      <View style={styles.footer}>
-        <Text style={styles.date}>
-          {new Date(item.created_at).toLocaleDateString()}
-        </Text>
-        <TouchableOpacity
-          style={styles.statusButton}
-          onPress={() => updateStatus(item.id, item.status)}
-        >
-          <Text style={styles.statusButtonText}>
-            {item.status.replace('_', ' ')}
-          </Text>
-          <Ionicons name="chevron-down" size={16} color={COLORS.gray[600]} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={STAYIN.primaryBlue} />
+        <Text style={styles.loadingText}>Loading requests...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.gray[900]} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Maintenance Requests</Text>
-        <Text style={styles.count}>{requests.length}</Text>
-      </View>
+    <>
+      <StatusBar style="light" backgroundColor="transparent" translucent />
 
-      <FlatList
-        data={requests}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderRequest}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="construct-outline" size={64} color={COLORS.gray[300]} />
-            <Text style={styles.emptyText}>No maintenance requests</Text>
+      <View style={styles.container}>
+        {/* Gradient Header */}
+        <LinearGradient
+          colors={[STAYIN.primaryBlue, '#0F172A']}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={28} color={STAYIN.white} />
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>Maintenance Requests</Text>
+
+            <Text style={styles.countBadge}>{requests.length}</Text>
           </View>
-        }
-      />
-    </View>
+        </LinearGradient>
+
+        <FlatList
+          data={requests}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderRequest}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="construct-outline" size={80} color={COLORS.gray[300]} />
+              <Text style={styles.emptyTitle}>No Maintenance Requests</Text>
+              <Text style={styles.emptyText}>All clear! No pending issues reported.</Text>
+            </View>
+          }
+        />
+
+        {/* Full-Screen Image Gallery Modal */}
+        <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={32} color={STAYIN.white} />
+              </TouchableOpacity>
+              <Text style={styles.modalImageCount}>
+                {initialIndex + 1} / {selectedImages.length}
+              </Text>
+              <View style={{ width: 32 }} />
+            </View>
+
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const newIndex = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                setInitialIndex(newIndex);
+              }}
+            >
+              {selectedImages.map((uri, idx) => (
+                <View key={idx} style={styles.fullImageContainer}>
+                  <Image source={{ uri }} style={styles.fullImage} resizeMode="contain" />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  centered: { justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[200],
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  title: { fontSize: 18, fontWeight: 'bold', color: COLORS.gray[900] },
-  count: { fontSize: 16, color: COLORS.primary, fontWeight: '600' },
-  list: { padding: 16 },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: COLORS.gray[600],
+  },
+
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: STAYIN.white,
+  },
+  countBadge: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: STAYIN.white,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+
+  list: {
+    padding: 16,
+  },
+
   requestCard: {
     backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.gray[200],
+    elevation: 2,
   },
-  requestHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  requestTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.gray[900] },
-  property: { fontSize: 13, color: COLORS.gray[600], marginTop: 2 },
-  tenant: { fontSize: 13, color: COLORS.gray[600], marginTop: 2 },
-  priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  priorityText: { fontSize: 11, fontWeight: 'bold' },
-  description: { fontSize: 14, color: COLORS.gray[700], marginVertical: 8 },
-  imagesRow: { flexDirection: 'row', gap: 8, marginVertical: 8 },
-  requestImage: { width: 80, height: 80, borderRadius: 8 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
-  date: { fontSize: 12, color: COLORS.gray[500] },
+  requestHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  requestTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.gray[900],
+  },
+  property: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  tenant: {
+    fontSize: 13,
+    color: COLORS.gray[600],
+    marginTop: 2,
+  },
+  priorityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  priorityText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  description: {
+    fontSize: 15,
+    color: COLORS.gray[700],
+    lineHeight: 22,
+    marginVertical: 12,
+  },
+
+  imagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 8,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  gridImage: {
+    width: (SCREEN_WIDTH - 64 - 24) / 2, // 2 per row with padding
+    height: 120,
+    borderRadius: 12,
+  },
+  moreOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  moreText: {
+    color: STAYIN.white,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  date: {
+    fontSize: 13,
+    color: COLORS.gray[500],
+  },
   statusButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray[100],
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
+    borderWidth: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
   },
-  statusButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.gray[700] },
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyText: { marginTop: 16, fontSize: 16, color: COLORS.gray[500] },
+  statusButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  empty: {
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.gray[700],
+    marginTop: 20,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: COLORS.gray[500],
+    marginTop: 8,
+  },
+
+  // Modal Gallery
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  modalImageCount: {
+    fontSize: 16,
+    color: STAYIN.white,
+    fontWeight: '600',
+  },
+  fullImageContainer: {
+    width: SCREEN_WIDTH,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 1.2,
+  },
 });

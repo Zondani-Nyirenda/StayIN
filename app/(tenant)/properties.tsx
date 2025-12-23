@@ -1,6 +1,6 @@
 // ========================================
 // FILE: app/(tenant)/properties.tsx
-// Tenant Browse Properties - Compact Chip Filter
+// Tenant Browse Properties - StayIN Branded Header
 // ========================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -12,11 +12,23 @@ import {
   Image,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar'; // ← Added for status bar control
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
 import TenantService from '../../services/tenantService';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// StayIN Brand Colors
+const STAYIN = {
+  primaryBlue: '#1E40AF',
+  green: '#00AA00',
+  orange: '#FFAA00',
+  dark: '#000000',
+  white: '#FFFFFF',
+};
 
 interface Property {
   id: number;
@@ -53,7 +65,6 @@ export default function PropertiesScreen() {
     }
   };
 
-  // Count properties by type
   const getCount = (type: string) => {
     if (type === 'all') return properties.length;
     return properties.filter(p => p.property_type === type).length;
@@ -99,77 +110,96 @@ export default function PropertiesScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={STAYIN.primaryBlue} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Browse Properties</Text>
-      </View>
+    <>
+      {/* Transparent status bar with white content */}
+      <StatusBar style="light" backgroundColor="transparent" translucent />
 
-      {/* Compact Chip Filter with Counts */}
-      <View style={styles.filterWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterContent}
+      <View style={styles.container}>
+        {/* StayIN Branded Gradient Header */}
+        <LinearGradient
+          colors={[STAYIN.primaryBlue, '#0F172A']}
+          style={styles.headerGradient}
         >
-          {TYPES.map((type) => {
-            const label = getLabel(type);
-            const count = getCount(type);
-            const isActive = selectedType === type;
-
-            return (
-              <TouchableOpacity
-                key={type}
-                style={[styles.compactChip, isActive && styles.compactChipActive]}
-                onPress={() => setSelectedType(type)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.compactChipText, isActive && styles.compactChipTextActive]}>
-                  {label}
-                </Text>
-                <Text style={[styles.compactChipCount, isActive && styles.compactChipCountActive]}>
-                  {count}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Properties List */}
-      <FlatList
-        data={properties}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderProperty}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="home-outline" size={64} color={COLORS.gray[300]} />
-            <Text style={styles.emptyText}>No properties found</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Browse Properties</Text>
           </View>
-        }
-      />
-    </View>
+        </LinearGradient>
+
+        {/* Compact Chip Filter */}
+        <View style={styles.filterWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterContent}
+          >
+            {TYPES.map((type) => {
+              const label = getLabel(type);
+              const count = getCount(type);
+              const isActive = selectedType === type;
+
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.compactChip, isActive && styles.compactChipActive]}
+                  onPress={() => setSelectedType(type)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.compactChipText, isActive && styles.compactChipTextActive]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.compactChipCount, isActive && styles.compactChipCountActive]}>
+                    {count}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Properties List */}
+        <FlatList
+          data={properties}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderProperty}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="home-outline" size={64} color={COLORS.gray[300]} />
+              <Text style={styles.emptyText}>No properties found</Text>
+            </View>
+          }
+        />
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    padding: 20,
+
+  // StayIN Gradient Header
+  headerGradient: {
     paddingTop: 60,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[200],
+    paddingBottom: 32,
+    paddingHorizontal: 20,
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: COLORS.gray[900] },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: STAYIN.white,
+  },
 
   // Compact Chip Filter
   filterWrapper: {
@@ -193,8 +223,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   compactChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: STAYIN.primaryBlue,
+    borderColor: STAYIN.primaryBlue,
   },
   compactChipText: {
     fontSize: 12,
@@ -202,7 +232,7 @@ const styles = StyleSheet.create({
     color: COLORS.gray[700],
   },
   compactChipTextActive: {
-    color: COLORS.white,
+    color: STAYIN.white,
   },
   compactChipCount: {
     fontSize: 11,
@@ -216,8 +246,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   compactChipCountActive: {
-    color: COLORS.white,
-    backgroundColor: COLORS.white + '40',
+    color: STAYIN.white,
+    backgroundColor: STAYIN.white + '40',
   },
 
   list: { padding: 20 },
@@ -247,14 +277,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
-  price: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary },
+  price: { fontSize: 18, fontWeight: 'bold', color: STAYIN.primaryBlue },
   typeBadge: {
-    backgroundColor: COLORS.secondary + '20',
+    backgroundColor: STAYIN.primaryBlue + '20',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  typeText: { fontSize: 11, fontWeight: '600', color: COLORS.secondary },
+  typeText: { fontSize: 11, fontWeight: '600', color: STAYIN.primaryBlue },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyText: { marginTop: 16, fontSize: 16, color: COLORS.gray[500] },
 });

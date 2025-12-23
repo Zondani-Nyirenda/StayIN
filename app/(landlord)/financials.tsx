@@ -1,9 +1,18 @@
 // ========================================
 // FILE: app/(landlord)/financials.tsx
-// FIXED: Real PDF download functionality
+// Financial Reports - StayIN Branded Gradient Header
 // ========================================
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +20,13 @@ import { COLORS } from '../../utils/constants';
 import LandlordService, { FinancialBreakdown } from '../../services/landlordService';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// StayIN Brand Colors
+const STAYIN = {
+  primaryBlue: '#1E40AF',
+  white: '#FFFFFF',
+};
 
 export default function FinancialsScreen() {
   const router = useRouter();
@@ -97,19 +113,14 @@ export default function FinancialsScreen() {
         return;
       }
 
-      // Generate CSV content
       const csvContent = generateCSVContent(transactions);
-
-      // Create filename
       const filename = `financial_statement_${period}_${new Date().toISOString().split('T')[0]}.csv`;
       const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
-      // Write file using legacy API (explicitly imported)
       await FileSystem.writeAsStringAsync(fileUri, csvContent, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      // Check if sharing is available
       const isAvailable = await Sharing.isAvailableAsync();
       
       if (isAvailable) {
@@ -142,233 +153,244 @@ export default function FinancialsScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={STAYIN.primaryBlue} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.gray[900]} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Financial Reports</Text>
-        <View style={{ width: 24 }} />
+    <>
+      <StatusBar style="light" backgroundColor="transparent" translucent />
+
+      <View style={styles.container}>
+        {/* StayIN Gradient Header */}
+        <LinearGradient
+          colors={[STAYIN.primaryBlue, '#0F172A']}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={28} color={STAYIN.white} />
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>Financial Reports</Text>
+
+            <View style={{ width: 28 }} /> {/* Spacer */}
+          </View>
+        </LinearGradient>
+
+        <ScrollView style={styles.scrollContainer}>
+          {/* Period Selector */}
+          <View style={styles.periodSelector}>
+            <TouchableOpacity
+              style={[styles.periodButton, period === 'month' && styles.periodButtonActive]}
+              onPress={() => setPeriod('month')}
+            >
+              <Text style={[
+                styles.periodButtonText,
+                period === 'month' && styles.periodButtonTextActive
+              ]}>
+                This Month
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.periodButton, period === 'year' && styles.periodButtonActive]}
+              onPress={() => setPeriod('year')}
+            >
+              <Text style={[
+                styles.periodButtonText,
+                period === 'year' && styles.periodButtonTextActive
+              ]}>
+                This Year
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Summary Card */}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHeader}>
+              <Ionicons name="cash" size={32} color={COLORS.primary} />
+              <Text style={styles.summaryPeriod}>{financials?.period}</Text>
+            </View>
+            
+            <View style={styles.summaryMain}>
+              <Text style={styles.summaryLabel}>Total Rent Collected</Text>
+              <Text style={styles.summaryAmount}>
+                K{financials?.total_rent_collected.toLocaleString() || '0'}
+              </Text>
+              <Text style={styles.transactionCount}>
+                {financials?.transaction_count || 0} transactions
+              </Text>
+            </View>
+          </View>
+
+          {/* Fee Breakdown */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Fee Breakdown</Text>
+            <Text style={styles.sectionSubtitle}>
+              Transparent breakdown of all fees and charges
+            </Text>
+
+            <View style={styles.breakdownCard}>
+              {/* Platform Commission */}
+              <View style={styles.breakdownRow}>
+                <View style={styles.breakdownLeft}>
+                  <View style={[styles.breakdownIcon, { backgroundColor: COLORS.error + '15' }]}>
+                    <Ionicons name="business" size={20} color={COLORS.error} />
+                  </View>
+                  <View>
+                    <Text style={styles.breakdownLabel}>Platform Commission</Text>
+                    <Text style={styles.breakdownPercent}>
+                      {financials?.platform_commission_percent}% of rent collected
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.breakdownAmount, { color: COLORS.error }]}>
+                  -K{financials?.platform_commission_amount.toLocaleString()}
+                </Text>
+              </View>
+
+              {/* Maintenance Fund */}
+              <View style={styles.breakdownRow}>
+                <View style={styles.breakdownLeft}>
+                  <View style={[styles.breakdownIcon, { backgroundColor: COLORS.warning + '15' }]}>
+                    <Ionicons name="construct" size={20} color={COLORS.warning} />
+                  </View>
+                  <View>
+                    <Text style={styles.breakdownLabel}>Maintenance Fund</Text>
+                    <Text style={styles.breakdownPercent}>
+                      {financials?.maintenance_fund_percent}% reserved for repairs
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.breakdownAmount, { color: COLORS.warning }]}>
+                  -K{financials?.maintenance_fund_amount.toLocaleString()}
+                </Text>
+              </View>
+
+              {/* Application Fees */}
+              <View style={styles.breakdownRow}>
+                <View style={styles.breakdownLeft}>
+                  <View style={[styles.breakdownIcon, { backgroundColor: COLORS.info + '15' }]}>
+                    <Ionicons name="document-text" size={20} color={COLORS.info} />
+                  </View>
+                  <View>
+                    <Text style={styles.breakdownLabel}>Application Processing</Text>
+                    <Text style={styles.breakdownPercent}>
+                      {financials?.application_fees_percent}% application fees
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.breakdownAmount, { color: COLORS.info }]}>
+                  -K{financials?.application_fees_amount.toLocaleString()}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              {/* Net to Owner */}
+              <View style={[styles.breakdownRow, styles.netRow]}>
+                <View style={styles.breakdownLeft}>
+                  <View style={[styles.breakdownIcon, { backgroundColor: COLORS.success + '15' }]}>
+                    <Ionicons name="wallet" size={20} color={COLORS.success} />
+                  </View>
+                  <View>
+                    <Text style={[styles.breakdownLabel, styles.netLabel]}>Your Net Earnings</Text>
+                    <Text style={styles.breakdownPercent}>
+                      {financials?.net_to_owner_percent}% to your account
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.breakdownAmount, styles.netAmount]}>
+                  K{financials?.net_to_owner_amount.toLocaleString()}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Chart Visualization */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Revenue Distribution</Text>
+            
+            <View style={styles.chartCard}>
+              <View style={styles.chartRow}>
+                <View style={styles.chartBar}>
+                  <View style={[
+                    styles.chartSegment,
+                    { 
+                      flex: financials?.net_to_owner_percent,
+                      backgroundColor: COLORS.success 
+                    }
+                  ]} />
+                  <View style={[
+                    styles.chartSegment,
+                    { 
+                      flex: financials?.platform_commission_percent,
+                      backgroundColor: COLORS.error 
+                    }
+                  ]} />
+                  <View style={[
+                    styles.chartSegment,
+                    { 
+                      flex: financials?.maintenance_fund_percent,
+                      backgroundColor: COLORS.warning 
+                    }
+                  ]} />
+                  <View style={[
+                    styles.chartSegment,
+                    { 
+                      flex: financials?.application_fees_percent,
+                      backgroundColor: COLORS.info 
+                    }
+                  ]} />
+                </View>
+              </View>
+
+              <View style={styles.chartLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
+                  <Text style={styles.legendText}>You ({financials?.net_to_owner_percent}%)</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: COLORS.error }]} />
+                  <Text style={styles.legendText}>Platform ({financials?.platform_commission_percent}%)</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
+                  <Text style={styles.legendText}>Maintenance ({financials?.maintenance_fund_percent}%)</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: COLORS.info }]} />
+                  <Text style={styles.legendText}>App Fee ({financials?.application_fees_percent}%)</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Download Statement */}
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={[styles.downloadButton, downloading && styles.downloadButtonDisabled]}
+              onPress={handleDownloadStatement}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <ActivityIndicator size="small" color={STAYIN.white} />
+              ) : (
+                <Ionicons name="download-outline" size={24} color={STAYIN.white} />
+              )}
+              <Text style={styles.downloadButtonText}>
+                {downloading ? 'Generating...' : 'Download Financial Statement (CSV)'}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.downloadNote}>
+              Statement includes all transactions, fees, and detailed breakdown
+            </Text>
+          </View>
+        </ScrollView>
       </View>
-
-      <ScrollView style={styles.content}>
-        {/* Period Selector */}
-        <View style={styles.periodSelector}>
-          <TouchableOpacity
-            style={[styles.periodButton, period === 'month' && styles.periodButtonActive]}
-            onPress={() => setPeriod('month')}
-          >
-            <Text style={[
-              styles.periodButtonText,
-              period === 'month' && styles.periodButtonTextActive
-            ]}>
-              This Month
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.periodButton, period === 'year' && styles.periodButtonActive]}
-            onPress={() => setPeriod('year')}
-          >
-            <Text style={[
-              styles.periodButtonText,
-              period === 'year' && styles.periodButtonTextActive
-            ]}>
-              This Year
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Summary Card */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <Ionicons name="cash" size={32} color={COLORS.primary} />
-            <Text style={styles.summaryPeriod}>{financials?.period}</Text>
-          </View>
-          
-          <View style={styles.summaryMain}>
-            <Text style={styles.summaryLabel}>Total Rent Collected</Text>
-            <Text style={styles.summaryAmount}>
-              K{financials?.total_rent_collected.toLocaleString() || '0'}
-            </Text>
-            <Text style={styles.transactionCount}>
-              {financials?.transaction_count || 0} transactions
-            </Text>
-          </View>
-        </View>
-
-        {/* Fee Breakdown - VISIBLE TO LANDLORD */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fee Breakdown</Text>
-          <Text style={styles.sectionSubtitle}>
-            Transparent breakdown of all fees and charges
-          </Text>
-
-          <View style={styles.breakdownCard}>
-            {/* Platform Commission */}
-            <View style={styles.breakdownRow}>
-              <View style={styles.breakdownLeft}>
-                <View style={[styles.breakdownIcon, { backgroundColor: COLORS.error + '15' }]}>
-                  <Ionicons name="business" size={20} color={COLORS.error} />
-                </View>
-                <View>
-                  <Text style={styles.breakdownLabel}>Platform Commission</Text>
-                  <Text style={styles.breakdownPercent}>
-                    {financials?.platform_commission_percent}% of rent collected
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.breakdownAmount, { color: COLORS.error }]}>
-                -K{financials?.platform_commission_amount.toLocaleString()}
-              </Text>
-            </View>
-
-            {/* Maintenance Fund */}
-            <View style={styles.breakdownRow}>
-              <View style={styles.breakdownLeft}>
-                <View style={[styles.breakdownIcon, { backgroundColor: COLORS.warning + '15' }]}>
-                  <Ionicons name="construct" size={20} color={COLORS.warning} />
-                </View>
-                <View>
-                  <Text style={styles.breakdownLabel}>Maintenance Fund</Text>
-                  <Text style={styles.breakdownPercent}>
-                    {financials?.maintenance_fund_percent}% reserved for repairs
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.breakdownAmount, { color: COLORS.warning }]}>
-                -K{financials?.maintenance_fund_amount.toLocaleString()}
-              </Text>
-            </View>
-
-            {/* Application Fees */}
-            <View style={styles.breakdownRow}>
-              <View style={styles.breakdownLeft}>
-                <View style={[styles.breakdownIcon, { backgroundColor: COLORS.info + '15' }]}>
-                  <Ionicons name="document-text" size={20} color={COLORS.info} />
-                </View>
-                <View>
-                  <Text style={styles.breakdownLabel}>Application Processing</Text>
-                  <Text style={styles.breakdownPercent}>
-                    {financials?.application_fees_percent}% application fees
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.breakdownAmount, { color: COLORS.info }]}>
-                -K{financials?.application_fees_amount.toLocaleString()}
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* Net to Owner */}
-            <View style={[styles.breakdownRow, styles.netRow]}>
-              <View style={styles.breakdownLeft}>
-                <View style={[styles.breakdownIcon, { backgroundColor: COLORS.success + '15' }]}>
-                  <Ionicons name="wallet" size={20} color={COLORS.success} />
-                </View>
-                <View>
-                  <Text style={[styles.breakdownLabel, styles.netLabel]}>Your Net Earnings</Text>
-                  <Text style={styles.breakdownPercent}>
-                    {financials?.net_to_owner_percent}% to your account
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.breakdownAmount, styles.netAmount]}>
-                K{financials?.net_to_owner_amount.toLocaleString()}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Chart Visualization */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Revenue Distribution</Text>
-          
-          <View style={styles.chartCard}>
-            <View style={styles.chartRow}>
-              <View style={styles.chartBar}>
-                <View style={[
-                  styles.chartSegment,
-                  { 
-                    flex: financials?.net_to_owner_percent,
-                    backgroundColor: COLORS.success 
-                  }
-                ]} />
-                <View style={[
-                  styles.chartSegment,
-                  { 
-                    flex: financials?.platform_commission_percent,
-                    backgroundColor: COLORS.error 
-                  }
-                ]} />
-                <View style={[
-                  styles.chartSegment,
-                  { 
-                    flex: financials?.maintenance_fund_percent,
-                    backgroundColor: COLORS.warning 
-                  }
-                ]} />
-                <View style={[
-                  styles.chartSegment,
-                  { 
-                    flex: financials?.application_fees_percent,
-                    backgroundColor: COLORS.info 
-                  }
-                ]} />
-              </View>
-            </View>
-
-            <View style={styles.chartLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: COLORS.success }]} />
-                <Text style={styles.legendText}>You ({financials?.net_to_owner_percent}%)</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: COLORS.error }]} />
-                <Text style={styles.legendText}>Platform ({financials?.platform_commission_percent}%)</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: COLORS.warning }]} />
-                <Text style={styles.legendText}>Maintenance ({financials?.maintenance_fund_percent}%)</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: COLORS.info }]} />
-                <Text style={styles.legendText}>App Fee ({financials?.application_fees_percent}%)</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Download Statement - FIXED */}
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={[styles.downloadButton, downloading && styles.downloadButtonDisabled]}
-            onPress={handleDownloadStatement}
-            disabled={downloading}
-          >
-            {downloading ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
-            ) : (
-              <Ionicons name="download-outline" size={24} color={COLORS.white} />
-            )}
-            <Text style={styles.downloadButtonText}>
-              {downloading ? 'Generating...' : 'Download Financial Statement (CSV)'}
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={styles.downloadNote}>
-            Statement includes all transactions, fees, and detailed breakdown
-          </Text>
-        </View>
-      </ScrollView>
-    </View>
+    </>
   );
 }
 
@@ -380,29 +402,30 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[200],
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.gray[900],
-  },
-  content: {
     flex: 1,
   },
+
+  // StayIN Gradient Header
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: STAYIN.white,
+  },
+
+  scrollContainer: {
+    flex: 1,
+  },
+
   periodSelector: {
     flexDirection: 'row',
     padding: 16,
@@ -429,6 +452,7 @@ const styles = StyleSheet.create({
   periodButtonTextActive: {
     color: COLORS.white,
   },
+
   summaryCard: {
     backgroundColor: COLORS.white,
     margin: 16,
@@ -464,6 +488,7 @@ const styles = StyleSheet.create({
     color: COLORS.gray[500],
     marginTop: 4,
   },
+
   section: {
     padding: 16,
   },
@@ -478,6 +503,7 @@ const styles = StyleSheet.create({
     color: COLORS.gray[600],
     marginBottom: 16,
   },
+
   breakdownCard: {
     backgroundColor: COLORS.white,
     padding: 16,
@@ -537,6 +563,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray[200],
     marginVertical: 8,
   },
+
   chartCard: {
     backgroundColor: COLORS.white,
     padding: 16,
@@ -573,6 +600,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.gray[700],
   },
+
   downloadButton: {
     flexDirection: 'row',
     alignItems: 'center',

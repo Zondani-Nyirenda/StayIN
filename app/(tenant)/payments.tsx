@@ -1,6 +1,6 @@
 // ========================================
 // FILE: app/(tenant)/payments.tsx
-// Payment History & Make Payments
+// Payments - StayIN Branded Header
 // ========================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -14,9 +14,21 @@ import {
   Alert,
   Modal,
   TextInput,
+  Platform,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import TenantService, { Payment } from '../../services/tenantService';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// StayIN Brand Colors
+const STAYIN = {
+  primaryBlue: '#1E40AF',
+  green: '#00AA00',
+  orange: '#FFAA00',
+  dark: '#000000',
+  white: '#FFFFFF',
+};
 
 export default function PaymentsScreen() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -73,7 +85,7 @@ export default function PaymentsScreen() {
           onPress: async () => {
             try {
               const tenantId = 2;
-              const propertyId = 1; // Example
+              const propertyId = 1;
               const transactionRef = `TXN${Date.now()}`;
 
               await TenantService.recordPayment(
@@ -136,239 +148,244 @@ export default function PaymentsScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={STAYIN.primaryBlue} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Payments</Text>
-        <Text style={styles.headerSubtitle}>Manage your rental payments</Text>
-      </View>
+    <>
+      <StatusBar style="light" backgroundColor="transparent" translucent />
 
-      {/* Summary Cards */}
-      <View style={styles.summaryContainer}>
-        <View style={[styles.summaryCard, styles.totalCard]}>
-          <Ionicons name="checkmark-circle" size={32} color="#10B981" />
-          <Text style={styles.summaryAmount}>K{totalPaid.toLocaleString()}</Text>
-          <Text style={styles.summaryLabel}>Total Paid</Text>
-        </View>
-
-        <View style={[styles.summaryCard, styles.pendingCard]}>
-          <Ionicons name="time" size={32} color="#F59E0B" />
-          <Text style={styles.summaryAmount}>K{pendingAmount.toLocaleString()}</Text>
-          <Text style={styles.summaryLabel}>Pending</Text>
-        </View>
-      </View>
-
-      {/* Make Payment Button */}
-      <View style={styles.actionContainer}>
-        <TouchableOpacity style={styles.payButton} onPress={handleMakePayment}>
-          <Ionicons name="card" size={20} color="#FFFFFF" />
-          <Text style={styles.payButtonText}>Make Payment</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Payment History */}
-      <View style={styles.historyHeader}>
-        <Text style={styles.historyTitle}>Payment History</Text>
-        <Text style={styles.historyCount}>{payments.length} transactions</Text>
-      </View>
-
-      <ScrollView
-        style={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {payments.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>No Payments Yet</Text>
-            <Text style={styles.emptyText}>
-              Your payment history will appear here
-            </Text>
+      <View style={styles.container}>
+        {/* StayIN Gradient Header */}
+        <LinearGradient
+          colors={[STAYIN.primaryBlue, '#0F172A']}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.headerTitle}>Payments</Text>
+              <Text style={styles.headerSubtitle}>Manage your rental payments</Text>
+            </View>
           </View>
-        ) : (
-          payments.map((payment) => (
-            <View key={payment.id} style={styles.paymentCard}>
-              <View style={styles.paymentHeader}>
-                <View style={styles.paymentIconContainer}>
-                  <Ionicons
-                    name={getPaymentTypeIcon(payment.payment_type)}
-                    size={24}
-                    color="#4F46E5"
-                  />
-                </View>
+        </LinearGradient>
 
-                <View style={styles.paymentInfo}>
-                  <Text style={styles.propertyName}>{payment.property_title}</Text>
-                  <Text style={styles.paymentType}>
-                    {payment.payment_type.replace('_', ' ')}
-                  </Text>
-                </View>
+        {/* Summary Cards */}
+        <View style={styles.summaryContainer}>
+          <View style={[styles.summaryCard, styles.totalCard]}>
+            <Ionicons name="checkmark-circle" size={32} color="#10B981" />
+            <Text style={styles.summaryAmount}>K{totalPaid.toLocaleString()}</Text>
+            <Text style={styles.summaryLabel}>Total Paid</Text>
+          </View>
 
-                <View style={styles.paymentAmountContainer}>
-                  <Text style={styles.paymentAmount}>
-                    K{payment.amount.toFixed(2)}
-                  </Text>
-                  <View
-                    style={[
-                      styles.statusDot,
-                      { backgroundColor: getStatusColor(payment.status) },
-                    ]}
-                  />
-                </View>
-              </View>
+          <View style={[styles.summaryCard, styles.pendingCard]}>
+            <Ionicons name="time" size={32} color="#F59E0B" />
+            <Text style={styles.summaryAmount}>K{pendingAmount.toLocaleString()}</Text>
+            <Text style={styles.summaryLabel}>Pending</Text>
+          </View>
+        </View>
 
-              <View style={styles.paymentDetails}>
-                <View style={styles.detailRow}>
-                  <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-                  <Text style={styles.detailText}>
-                    {new Date(payment.created_at).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </Text>
-                </View>
+        {/* Make Payment Button */}
+        <View style={styles.actionContainer}>
+          <TouchableOpacity style={styles.payButton} onPress={handleMakePayment}>
+            <Ionicons name="card" size={20} color={STAYIN.white} />
+            <Text style={styles.payButtonText}>Make Payment</Text>
+          </TouchableOpacity>
+        </View>
 
-                {payment.payment_method && (
-                  <View style={styles.detailRow}>
-                    <Ionicons name="card-outline" size={14} color="#6B7280" />
-                    <Text style={styles.detailText}>{payment.payment_method}</Text>
+        {/* Payment History Header */}
+        <View style={styles.historyHeader}>
+          <Text style={styles.historyTitle}>Payment History</Text>
+          <Text style={styles.historyCount}>{payments.length} transactions</Text>
+        </View>
+
+        {/* Payment List */}
+        <ScrollView
+          style={styles.listContainer}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {payments.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
+              <Text style={styles.emptyTitle}>No Payments Yet</Text>
+              <Text style={styles.emptyText}>
+                Your payment history will appear here
+              </Text>
+            </View>
+          ) : (
+            payments.map((payment) => (
+              <View key={payment.id} style={styles.paymentCard}>
+                <View style={styles.paymentHeader}>
+                  <View style={styles.paymentIconContainer}>
+                    <Ionicons
+                      name={getPaymentTypeIcon(payment.payment_type)}
+                      size={24}
+                      color={STAYIN.primaryBlue}
+                    />
                   </View>
-                )}
 
-                {payment.transaction_ref && (
-                  <View style={styles.detailRow}>
-                    <Ionicons name="document-text-outline" size={14} color="#6B7280" />
-                    <Text style={styles.detailText} numberOfLines={1}>
-                      Ref: {payment.transaction_ref}
+                  <View style={styles.paymentInfo}>
+                    <Text style={styles.propertyName}>{payment.property_title}</Text>
+                    <Text style={styles.paymentType}>
+                      {payment.payment_type.replace('_', ' ')}
                     </Text>
                   </View>
-                )}
-              </View>
 
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: `${getStatusColor(payment.status)}20` },
-                ]}
-              >
-                <Text
+                  <View style={styles.paymentAmountContainer}>
+                    <Text style={styles.paymentAmount}>
+                      K{payment.amount.toFixed(2)}
+                    </Text>
+                    <View
+                      style={[
+                        styles.statusDot,
+                        { backgroundColor: getStatusColor(payment.status) },
+                      ]}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.paymentDetails}>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+                    <Text style={styles.detailText}>
+                      {new Date(payment.created_at).toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </Text>
+                  </View>
+
+                  {payment.payment_method && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="card-outline" size={14} color="#6B7280" />
+                      <Text style={styles.detailText}>{payment.payment_method}</Text>
+                    </View>
+                  )}
+
+                  {payment.transaction_ref && (
+                    <View style={styles.detailRow}>
+                      <Ionicons name="document-text-outline" size={14} color="#6B7280" />
+                      <Text style={styles.detailText} numberOfLines={1}>
+                        Ref: {payment.transaction_ref}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View
                   style={[
-                    styles.statusText,
-                    { color: getStatusColor(payment.status) },
+                    styles.statusBadge,
+                    { backgroundColor: `${getStatusColor(payment.status)}20` },
                   ]}
                 >
-                  {payment.status.toUpperCase()}
-                </Text>
-              </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
-
-      {/* Payment Modal */}
-      <Modal
-        visible={showPaymentModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowPaymentModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Make Payment</Text>
-              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBody}>
-              {/* Payment Amount */}
-              <View style={styles.amountDisplay}>
-                <Text style={styles.amountLabel}>Amount to Pay</Text>
-                <Text style={styles.amountValue}>K1,250.00</Text>
-                <Text style={styles.amountNote}>Rent for January 2025</Text>
-              </View>
-
-              {/* Payment Methods */}
-              <Text style={styles.sectionLabel}>Select Payment Method</Text>
-              <View style={styles.methodsGrid}>
-                {['MTN Mobile Money', 'Airtel Money', 'Zamtel Money', 'Bank Transfer'].map(
-                  (method) => (
-                    <TouchableOpacity
-                      key={method}
-                      style={[
-                        styles.methodCard,
-                        selectedPaymentMethod === method && styles.selectedMethod,
-                      ]}
-                      onPress={() => setSelectedPaymentMethod(method)}
-                    >
-                      <Ionicons
-                        name={
-                          method.includes('Bank') ? 'business' : 'phone-portrait'
-                        }
-                        size={24}
-                        color={
-                          selectedPaymentMethod === method ? '#4F46E5' : '#6B7280'
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.methodText,
-                          selectedPaymentMethod === method &&
-                            styles.selectedMethodText,
-                        ]}
-                      >
-                        {method}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                )}
-              </View>
-
-              {/* Phone Number Input */}
-              {selectedPaymentMethod && !selectedPaymentMethod.includes('Bank') && (
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Mobile Money Number</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 0977123456"
-                    keyboardType="phone-pad"
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    maxLength={10}
-                  />
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: getStatusColor(payment.status) },
+                    ]}
+                  >
+                    {payment.status.toUpperCase()}
+                  </Text>
                 </View>
-              )}
+              </View>
+            ))
+          )}
+        </ScrollView>
 
-              {/* Action Buttons */}
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowPaymentModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+        {/* Payment Modal */}
+        <Modal
+          visible={showPaymentModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPaymentModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Make Payment</Text>
+                <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                  <Ionicons name="close" size={24} color="#6B7280" />
                 </TouchableOpacity>
+              </View>
 
-                <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={handleProcessPayment}
-                >
-                  <Text style={styles.confirmButtonText}>Pay Now</Text>
-                </TouchableOpacity>
+              <View style={styles.modalBody}>
+                {/* Amount */}
+                <View style={styles.amountDisplay}>
+                  <Text style={styles.amountLabel}>Amount to Pay</Text>
+                  <Text style={styles.amountValue}>K1,250.00</Text>
+                  <Text style={styles.amountNote}>Rent for January 2025</Text>
+                </View>
+
+                {/* Payment Methods */}
+                <Text style={styles.sectionLabel}>Select Payment Method</Text>
+                <View style={styles.methodsGrid}>
+                  {['MTN Mobile Money', 'Airtel Money', 'Zamtel Money', 'Bank Transfer'].map(
+                    (method) => (
+                      <TouchableOpacity
+                        key={method}
+                        style={[
+                          styles.methodCard,
+                          selectedPaymentMethod === method && styles.selectedMethod,
+                        ]}
+                        onPress={() => setSelectedPaymentMethod(method)}
+                      >
+                        <Ionicons
+                          name={method.includes('Bank') ? 'business' : 'phone-portrait'}
+                          size={24}
+                          color={selectedPaymentMethod === method ? STAYIN.primaryBlue : '#6B7280'}
+                        />
+                        <Text
+                          style={[
+                            styles.methodText,
+                            selectedPaymentMethod === method && styles.selectedMethodText,
+                          ]}
+                        >
+                          {method}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </View>
+
+                {/* Phone Number */}
+                {selectedPaymentMethod && !selectedPaymentMethod.includes('Bank') && (
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Mobile Money Number</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., 0977123456"
+                      keyboardType="phone-pad"
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      maxLength={10}
+                    />
+                  </View>
+                )}
+
+                {/* Buttons */}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setShowPaymentModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={handleProcessPayment}
+                  >
+                    <Text style={styles.confirmButtonText}>Pay Now</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </>
   );
 }
 
@@ -383,23 +400,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
   },
-  header: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
+
+  // StayIN Gradient Header
+  headerGradient: {
     paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingBottom: 36,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: '800',
+    color: STAYIN.white,
     marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 15,
+    color: STAYIN.white,
+    opacity: 0.9,
   },
+
   summaryContainer: {
     flexDirection: 'row',
     padding: 16,
@@ -428,6 +452,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
+
   actionContainer: {
     paddingHorizontal: 16,
     paddingBottom: 16,
@@ -437,10 +462,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#4F46E5',
+    backgroundColor: STAYIN.primaryBlue,
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#4F46E5',
+    shadowColor: STAYIN.primaryBlue,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -449,8 +474,9 @@ const styles = StyleSheet.create({
   payButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: STAYIN.white,
   },
+
   historyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -470,6 +496,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
+
   listContainer: {
     flex: 1,
     padding: 16,
@@ -495,7 +522,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: STAYIN.primaryBlue + '20',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -555,6 +582,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -571,6 +599,8 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
   },
+
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -599,7 +629,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   amountDisplay: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: STAYIN.primaryBlue + '10',
     padding: 24,
     borderRadius: 16,
     alignItems: 'center',
@@ -613,7 +643,7 @@ const styles = StyleSheet.create({
   amountValue: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#4F46E5',
+    color: STAYIN.primaryBlue,
     marginBottom: 4,
   },
   amountNote: {
@@ -643,8 +673,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectedMethod: {
-    borderColor: '#4F46E5',
-    backgroundColor: '#EEF2FF',
+    borderColor: STAYIN.primaryBlue,
+    backgroundColor: STAYIN.primaryBlue + '10',
   },
   methodText: {
     fontSize: 12,
@@ -653,7 +683,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   selectedMethodText: {
-    color: '#4F46E5',
+    color: STAYIN.primaryBlue,
   },
   inputContainer: {
     marginBottom: 24,
@@ -693,12 +723,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#4F46E5',
+    backgroundColor: STAYIN.primaryBlue,
     alignItems: 'center',
   },
   confirmButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: STAYIN.white,
   },
 });

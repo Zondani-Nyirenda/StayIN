@@ -1,132 +1,109 @@
-// ========================================
-// FILE: contexts/AuthContext.tsx
-// Authentication Context with SQLite
-// ========================================
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { useRouter } from 'expo-router';
-import authService, { UserData } from '../services/authService';
-import databaseService from '../services/database';
+// contexts/AuthContext.tsx
+import React, { createContext, useContext, useState } from 'react';
+import AuthService, { UserData } from '../services/authService';
 
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
-  isAdmin: boolean;
-  isLandlord: boolean;
-  isTenant: boolean;
+  updateUser: (userData: UserData) => Promise<void>;
+  refreshUser: () => Promise<void>;
+  loadUser: () => Promise<void>; // ← NEW: expose manually
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  signIn: async () => ({ success: false }),
-  signOut: async () => {},
-  isAdmin: false,
-  isLandlord: false,
-  isTenant: false,
-});
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [loading, setLoading] = useState(true); // Keep true initially
 
-  // Initialize app: database + check current session
-  useEffect(() => {
-    async function initializeApp() {
-      try {
-        console.log('🚀 Initializing StayIN App...');
-        await databaseService.init();
-
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
-
-        // AFTER loading user, redirect to correct dashboard ONCE
-        if (currentUser) {
-          if (currentUser.role === 'admin') {
-            router.replace('/(admin)/dashboard');
-          } else if (currentUser.role === 'landlord') {
-            router.replace('/(landlord)/dashboard');
-          } else if (currentUser.role === 'tenant') {
-            router.replace('/(tenant)/dashboard');
-          }
-        }
-
-        console.log('✅ App initialized');
-      } catch (error) {
-        console.error('❌ App initialization failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    initializeApp();
-  }, []); // Run only once on mount
-
-  // Sign In
-  async function signIn(email: string, password: string) {
+  const loadUser = async () => {
     try {
-      const result = await authService.login(email, password);
+      setLoading(true);
+      console.log('🔄 Loading user from auth service...');
+      const currentUser = await AuthService.getCurrentUser();
+
+      if (currentUser) {
+        console.log('✅ User loaded:', currentUser.email, currentUser.role);
+        setUser(currentUser);
+      } else {
+        console.log('ℹ️ No user session found');
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('❌ Error loading user:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      console.log('🔐 Signing in...');
+      const result = await AuthService.login(email, password);
 
       if (result.success && result.userData) {
         setUser(result.userData);
-
-        // Redirect based on role AFTER successful login
-        if (result.userData.role === 'admin') {
-          router.replace('/(admin)/dashboard');
-        } else if (result.userData.role === 'landlord') {
-          router.replace('/(landlord)/dashboard');
-        } else if (result.userData.role === 'tenant') {
-          router.replace('/(tenant)/dashboard');
-        }
-
         return { success: true };
       }
 
-      return {
-        success: false,
-        error: result.error || 'Login failed',
-      };
-    } catch (error) {
+      return { success: false, error: result.error };
+    } catch (error: any) {
       console.error('❌ Sign in error:', error);
-      return {
-        success: false,
-        error: 'An unexpected error occurred',
-      };
+      return { success: false, error: error.message || 'Login failed' };
     }
-  }
+  };
 
-  // Sign Out
-  async function signOut() {
+  const signOut = async () => {
     try {
-      await authService.logout();
+      await AuthService.logout();
       setUser(null);
-      router.replace('/(auth)/login');
+      console.log('✅ Signed out successfully');
     } catch (error) {
       console.error('❌ Sign out error:', error);
     }
-  }
-
-  const value: AuthContextType = {
-    user,
-    loading,
-    signIn,
-    signOut,
-    isAdmin: user?.role === 'admin',
-    isLandlord: user?.role === 'landlord',
-    isTenant: user?.role === 'tenant',
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const updateUser = async (userData: UserData) => {
+    setUser(userData);
+  };
+
+  const refreshUser = async () => {
+    if (!user?.id) return;
+
+    try {
+      const refreshedUser = await AuthService.refreshUserData(user.id);
+      if (refreshedUser) {
+        setUser(refreshedUser);
+      }
+    } catch (error) {
+      console.error('❌ Refresh user error:', error);
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn,
+        signOut,
+        updateUser,
+        refreshUser,
+        loadUser, // ← Expose it
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export default AuthContext;
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

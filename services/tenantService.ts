@@ -1,6 +1,6 @@
 // ========================================
 // FILE: services/tenantService.ts
-// Tenant-specific database operations (FIXED: Lazy DB Access)
+// Fixed Tenant Service with Proper Application Tracking
 // ========================================
 import DatabaseService from './database';
 
@@ -33,6 +33,10 @@ export interface TenantApplication {
   property_type: string;
   status: 'pending' | 'approved' | 'rejected';
   application_fee: number;
+  deposit_amount: number;
+  rent_amount: number;
+  amount_due: number;
+  paid_amount: number;
   documents: string[];
   notes: string | null;
   created_at: string;
@@ -42,7 +46,7 @@ export interface Payment {
   id: number;
   property_id: number;
   property_title: string;
-  payment_type: 'rent' | 'deposit' | 'penalty' | 'application_fee';
+  payment_type: 'rent' | 'deposit' | 'penalty' | 'application_fee' | 'initial_payment';
   amount: number;
   status: 'pending' | 'completed' | 'failed';
   payment_method: string | null;
@@ -84,7 +88,6 @@ export interface Agreement {
 }
 
 class TenantService {
-  // CRITICAL FIX: Use getter instead of property to avoid early initialization
   private get db() {
     return DatabaseService.getDatabase();
   }
@@ -112,7 +115,7 @@ class TenantService {
     }
 
     if (city) {
-      query += ' AND p.city LIKE ?';
+      query += ' AND LOWER(p.city) LIKE LOWER(?)';
       params.push(`%${city}%`);
     }
 
@@ -147,37 +150,115 @@ class TenantService {
   }
 
   // ========================================
-  // APPLICATIONS
+  // APPLICATIONS - FIXED
   // ========================================
   async submitApplication(
     tenantId: number,
     propertyId: number,
     documents: string[] = []
   ): Promise<number> {
-    const result = await this.db.runAsync(`
-      INSERT INTO applications (property_id, tenant_id, documents, created_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-    `, [propertyId, tenantId, JSON.stringify(documents)]);
+    try {
+      // Verify property exists
+      const property = await this.getPropertyDetails(propertyId);
+      if (!property) {
+        throw new Error('Property not found');
+      }
 
-    return result.lastInsertRowId;
+      // Check if already applied
+      const existingApp = await this.db.getFirstAsync<any>(`
+        SELECT id, status FROM applications 
+        WHERE property_id = ? AND tenant_id = ?
+      `, [propertyId, tenantId]);
+
+      if (existingApp) {
+        throw new Error(`You have already applied to this property (Status: ${existingApp.status})`);
+      }
+
+      // Insert new application with explicit pending status
+      const result = await this.db.runAsync(`
+        INSERT INTO applications (
+          property_id, 
+          tenant_id, 
+          status,
+          application_fee,
+          documents, 
+          created_at
+        ) VALUES (?, ?, 'pending', 0, ?, datetime('now'))
+      `, [propertyId, tenantId, JSON.stringify(documents)]);
+
+      console.log('Application created with ID:', result.lastInsertRowId);
+
+      return result.lastInsertRowId;
+    } catch (error: any) {
+      console.error('Error in submitApplication:', error);
+      throw error;
+    }
   }
 
   async getMyApplications(tenantId: number): Promise<TenantApplication[]> {
-    const apps = await this.db.getAllAsync<any>(`
-      SELECT 
-        a.*,
-        p.title as property_title,
-        p.property_type
-      FROM applications a
-      JOIN properties p ON a.property_id = p.id
-      WHERE a.tenant_id = ?
-      ORDER BY a.created_at DESC
-    `, [tenantId]);
+    try {
+      const apps = await this.db.getAllAsync<any>(`
+        SELECT 
+          a.id,
+          a.property_id,
+          a.status,
+          COALESCE(a.application_fee, 0) as application_fee,
+          a.documents,
+          a.notes,
+          a.created_at,
+          p.title as property_title,
+          p.property_type,
+          p.price_per_month as rent_amount,
+          COALESCE(p.deposit_amount, 0) as deposit_amount,
+          COALESCE(SUM(
+            CASE WHEN py.status = 'completed' THEN py.amount ELSE 0 END
+          ), 0) as paid_amount
+        FROM applications a
+        JOIN properties p ON a.property_id = p.id
+        LEFT JOIN payments py ON py.property_id = a.property_id 
+          AND py.tenant_id = a.tenant_id 
+          AND py.payment_type IN ('deposit', 'rent', 'initial_payment', 'application_fee')
+        WHERE a.tenant_id = ?
+        GROUP BY a.id
+        ORDER BY a.created_at DESC
+      `, [tenantId]);
 
-    return apps.map(a => ({
-      ...a,
-      documents: a.documents ? JSON.parse(a.documents) : [],
-    }));
+      return apps.map(a => {
+        const totalDue = a.rent_amount + a.deposit_amount + (a.application_fee || 0);
+        const remainingDue = Math.max(0, totalDue - a.paid_amount);
+
+        return {
+          id: a.id,
+          property_id: a.property_id,
+          property_title: a.property_title,
+          property_type: a.property_type,
+          status: a.status || 'pending',
+          application_fee: a.application_fee || 0,
+          deposit_amount: a.deposit_amount,
+          rent_amount: a.rent_amount,
+          amount_due: a.status === 'approved' ? remainingDue : 0,
+          paid_amount: a.paid_amount,
+          documents: a.documents ? JSON.parse(a.documents) : [],
+          notes: a.notes,
+          created_at: a.created_at,
+        };
+      });
+    } catch (error) {
+      console.error('Error in getMyApplications:', error);
+      throw error;
+    }
+  }
+
+  async updateApplicationStatus(
+    applicationId: number,
+    status: 'approved' | 'rejected',
+    notes?: string
+  ): Promise<void> {
+    await this.db.runAsync(`
+      UPDATE applications
+      SET status = ?, notes = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `, [status, notes || null, applicationId]);
   }
 
   // ========================================
@@ -201,14 +282,22 @@ class TenantService {
     tenantId: number,
     propertyId: number,
     amount: number,
-    paymentType: 'rent' | 'deposit' | 'penalty' | 'application_fee',
+    paymentType: 'rent' | 'deposit' | 'penalty' | 'application_fee' | 'initial_payment',
     transactionRef: string,
-    paymentMethod: string
+    paymentMethod: string,
+    phoneNumber?: string
   ): Promise<void> {
     await this.db.runAsync(`
       INSERT INTO payments (
-        tenant_id, property_id, payment_type, amount, status,
-        payment_method, transaction_ref, paid_at, created_at
+        tenant_id,
+        property_id,
+        payment_type,
+        amount,
+        status,
+        payment_method,
+        transaction_ref,
+        paid_at,
+        created_at
       ) VALUES (?, ?, ?, ?, 'completed', ?, ?, datetime('now'), datetime('now'))
     `, [tenantId, propertyId, paymentType, amount, paymentMethod, transactionRef]);
   }
@@ -227,7 +316,7 @@ class TenantService {
     const result = await this.db.runAsync(`
       INSERT INTO maintenance_requests (
         property_id, tenant_id, title, description, priority, images, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
     `, [propertyId, tenantId, title, description, priority, JSON.stringify(images)]);
 
     return result.lastInsertRowId;
@@ -301,7 +390,7 @@ class TenantService {
       INSERT INTO agreements (
         property_id, tenant_id, start_date, end_date, terms, 
         status, created_at
-      ) VALUES (?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
     `, [propertyId, tenantId, startDate, endDate, JSON.stringify(terms)]);
 
     return result.lastInsertRowId;

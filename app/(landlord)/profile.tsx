@@ -1,6 +1,6 @@
 // ========================================
-// FILE: app/(tenant)/profile.tsx
-// FULLY FIXED - Tenant Profile with Working Updates
+// FILE: app/(landlord)/profile.tsx
+// Landlord Profile - Same functionality as Tenant Profile
 // ========================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -32,17 +32,17 @@ const STAYIN = {
   white: '#FFFFFF',
 };
 
-export default function ProfileScreen() {
+export default function LandlordProfileScreen() {
   const { user, updateUser, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
-  
+
   // Form state
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || '');
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
-  
+
   // Change password modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -123,9 +123,9 @@ export default function ProfileScreen() {
     setLoading(true);
 
     try {
-      console.log('💾 Saving profile...');
+      console.log('💾 Saving landlord profile...');
 
-      // Update in database
+      // Update in database using shared UserService
       await UserService.updateProfile(user.id, {
         full_name: fullName,
         email,
@@ -139,7 +139,6 @@ export default function ProfileScreen() {
       const updatedUserData = await AuthService.refreshUserData(user.id);
 
       if (updatedUserData) {
-        // Update auth context
         await updateUser(updatedUserData);
         console.log('✅ Auth context updated with fresh data');
       }
@@ -189,7 +188,6 @@ export default function ProfileScreen() {
   };
 
   const handleCancel = () => {
-    // Reset to original values
     setFullName(user?.fullName || '');
     setEmail(user?.email || '');
     setPhoneNumber(user?.phoneNumber || '');
@@ -251,7 +249,7 @@ export default function ProfileScreen() {
             <Text style={styles.userRole}>{user?.role?.toUpperCase()}</Text>
           </View>
 
-          {/* Profile Information */}
+          {/* Personal Information */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Personal Information</Text>
@@ -263,7 +261,6 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Full Name */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Full Name</Text>
               <TextInput
@@ -275,7 +272,6 @@ export default function ProfileScreen() {
               />
             </View>
 
-            {/* Email */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
               <TextInput
@@ -289,7 +285,6 @@ export default function ProfileScreen() {
               />
             </View>
 
-            {/* Phone Number */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Phone Number</Text>
               <TextInput
@@ -302,7 +297,6 @@ export default function ProfileScreen() {
               />
             </View>
 
-            {/* Action Buttons */}
             {editing && (
               <View style={styles.actionButtons}>
                 <TouchableOpacity
@@ -342,7 +336,6 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
             </TouchableOpacity>
 
-            {/* Logout Button */}
             <TouchableOpacity
               style={[styles.securityOption, { marginTop: 12, borderColor: '#EF4444' }]}
               onPress={handleLogout}
@@ -355,10 +348,10 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Account Stats */}
+          {/* Account Information */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Account Information</Text>
-            
+
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Account Status</Text>
@@ -370,11 +363,13 @@ export default function ProfileScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Member Since</Text>
                 <Text style={styles.infoValue}>
-                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'N/A'}
+                  {user?.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
+                    : 'N/A'}
                 </Text>
               </View>
               <View style={styles.infoRow}>
@@ -466,7 +461,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  
+
   headerGradient: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20 },
   headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   backButton: { padding: 8 },
@@ -505,8 +500,8 @@ const styles = StyleSheet.create({
 
   section: { padding: 20, marginBottom: 8, backgroundColor: COLORS.white },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.gray[900], marginBottom: 16 },
-  
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: COLORS.gray[900] },
+
   editButton: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   editButtonText: { fontSize: 14, fontWeight: '600', color: STAYIN.primaryBlue },
 
@@ -547,7 +542,7 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.gray[200] },
   infoLabel: { fontSize: 14, color: COLORS.gray[600] },
   infoValue: { fontSize: 14, fontWeight: '600', color: COLORS.gray[900] },
-  
+
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: STAYIN.green + '20', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 13, fontWeight: '600', color: STAYIN.green },

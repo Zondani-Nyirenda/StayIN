@@ -1,14 +1,30 @@
 // ========================================
 // FILE: app/(landlord)/properties.tsx
-// Landlord Properties Management with Revenue
+// Landlord Properties Management - StayIN Branded Gradient Header
 // ========================================
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/constants';
+import { useAuth } from '../../contexts/AuthContext';
 import LandlordService, { PropertyWithRevenue } from '../../services/landlordService';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// StayIN Brand Colors
+const STAYIN = {
+  primaryBlue: '#1E40AF',
+  white: '#FFFFFF',
+};
 
 export default function PropertiesScreen() {
   const router = useRouter();
@@ -120,209 +136,219 @@ export default function PropertiesScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={STAYIN.primaryBlue} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.gray[900]} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Properties</Text>
-        <TouchableOpacity 
-          onPress={() => router.push('/(landlord)/add-property')}
-          style={styles.addButton}
+    <>
+      <StatusBar style="light" backgroundColor="transparent" translucent />
+
+      <View style={styles.container}>
+        {/* StayIN Gradient Header */}
+        <LinearGradient
+          colors={[STAYIN.primaryBlue, '#0F172A']}
+          style={styles.headerGradient}
         >
-          <Ionicons name="add-circle" size={28} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={28} color={STAYIN.white} />
+            </TouchableOpacity>
 
-      {/* Compact Chip-Style Type Filter */}
-      <View style={styles.filterWrapper}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.filterContent}
-        >
-          {['all', 'residential', 'student_boarding', 'commercial'].map((type) => {
-            const count = type === 'all' 
-              ? properties.length 
-              : properties.filter(p => p.property_type === type).length;
+            <Text style={styles.headerTitle}>My Properties</Text>
 
-            const label = type === 'all' 
-              ? 'All' 
-              : type === 'residential' 
-                ? 'Residential'
-                : type === 'student_boarding'
-                  ? 'Student'
-                  : 'Commercial';
-
-            const isActive = selectedType === type;
-
-            return (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.compactChip,
-                  isActive && styles.compactChipActive,
-                ]}
-                onPress={() => setSelectedType(type)}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.compactChipText,
-                  isActive && styles.compactChipTextActive,
-                ]}>
-                  {label}
-                </Text>
-                <Text style={[
-                  styles.compactChipCount,
-                  isActive && styles.compactChipCountActive,
-                ]}>
-                  {count}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Properties List */}
-      <ScrollView style={styles.content}>
-        {filteredProperties.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="home-outline" size={64} color={COLORS.gray[300]} />
-            <Text style={styles.emptyStateText}>No properties yet</Text>
             <TouchableOpacity 
-              style={styles.addPropertyButton}
               onPress={() => router.push('/(landlord)/add-property')}
             >
-              <Ionicons name="add-circle-outline" size={20} color={COLORS.white} />
-              <Text style={styles.addPropertyButtonText}>Add Your First Property</Text>
+              <Ionicons name="add-circle" size={32} color={STAYIN.white} />
             </TouchableOpacity>
           </View>
-        ) : (
-          filteredProperties.map(property => (
-            <View key={property.id} style={styles.propertyCard}>
-              {/* Property Header */}
-              <View style={styles.propertyHeader}>
-                <View style={styles.propertyInfo}>
-                  <Text style={styles.propertyTitle} numberOfLines={1}>{property.title}</Text>
-                  <Text style={styles.propertyAddress} numberOfLines={1}>
-                    {property.address}, {property.city}
+        </LinearGradient>
+
+        {/* Compact Chip-Style Type Filter */}
+        <View style={styles.filterWrapper}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.filterContent}
+          >
+            {['all', 'residential', 'student_boarding', 'commercial'].map((type) => {
+              const count = type === 'all' 
+                ? properties.length 
+                : properties.filter(p => p.property_type === type).length;
+
+              const label = type === 'all' 
+                ? 'All' 
+                : type === 'residential' 
+                  ? 'Residential'
+                  : type === 'student_boarding'
+                    ? 'Student'
+                    : 'Commercial';
+
+              const isActive = selectedType === type;
+
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.compactChip,
+                    isActive && styles.compactChipActive,
+                  ]}
+                  onPress={() => setSelectedType(type)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.compactChipText,
+                    isActive && styles.compactChipTextActive,
+                  ]}>
+                    {label}
                   </Text>
-                </View>
-                <View style={styles.badges}>
-                  <View style={[styles.badge, { backgroundColor: getTypeColor(property.property_type) + '15' }]}>
-                    <Text style={[styles.badgeText, { color: getTypeColor(property.property_type) }]}>
-                      {property.property_type.replace('_', ' ')}
-                    </Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: getStatusColor(property.status) + '15' }]}>
-                    <Text style={[styles.badgeText, { color: getStatusColor(property.status) }]}>
-                      {property.status}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Property Details */}
-              <View style={styles.detailsRow}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="bed-outline" size={16} color={COLORS.gray[600]} />
-                  <Text style={styles.detailText}>{property.bedrooms || 0} beds</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="water-outline" size={16} color={COLORS.gray[600]} />
-                  <Text style={styles.detailText}>{property.bathrooms || 0} baths</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="people-outline" size={16} color={COLORS.gray[600]} />
-                  <Text style={styles.detailText}>{property.max_occupancy || 0} max</Text>
-                </View>
-              </View>
-
-              {/* Price */}
-              <Text style={styles.price}>K{property.price_per_month.toLocaleString()}/month</Text>
-
-              {/* Revenue Breakdown */}
-              <View style={styles.revenueSection}>
-                <TouchableOpacity 
-                  style={styles.revenueSummary}
-                  onPress={() => showRevenueBreakdown(property)}
-                >
-                  <View>
-                    <Text style={styles.revenueLabel}>Total Collected</Text>
-                    <Text style={styles.revenueAmount}>K{property.total_collected.toLocaleString()}</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.netLabel}>Your Net</Text>
-                    <Text style={styles.netAmount}>K{property.net_to_owner.toLocaleString()}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
-                </TouchableOpacity>
-
-                <View style={styles.miniBreakdown}>
-                  <View style={styles.miniBreakdownItem}>
-                    <Text style={styles.miniBreakdownLabel}>Platform (25%)</Text>
-                    <Text style={styles.miniBreakdownValue}>-K{property.platform_commission.toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.miniBreakdownItem}>
-                    <Text style={styles.miniBreakdownLabel}>Maintenance (15%)</Text>
-                    <Text style={styles.miniBreakdownValue}>-K{property.maintenance_fund.toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.miniBreakdownItem}>
-                    <Text style={styles.miniBreakdownLabel}>App Fee (10%)</Text>
-                    <Text style={styles.miniBreakdownValue}>-K{property.application_fees.toLocaleString()}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Tenants */}
-              {property.tenant_count > 0 && (
-                <View style={styles.tenantInfo}>
-                  <Ionicons name="people" size={16} color={COLORS.success} />
-                  <Text style={styles.tenantText}>
-                    {property.tenant_count} active tenant{property.tenant_count > 1 ? 's' : ''}
+                  <Text style={[
+                    styles.compactChipCount,
+                    isActive && styles.compactChipCountActive,
+                  ]}>
+                    {count}
                   </Text>
-                </View>
-              )}
-
-              {/* Actions */}
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => router.push(`/(landlord)/edit-property?id=${property.id}`)}
-                >
-                  <Ionicons name="create-outline" size={18} color={COLORS.primary} />
-                  <Text style={styles.actionButtonText}>Edit</Text>
                 </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => handleStatusChange(property.id, property.status)}
-                >
-                  <Ionicons name="swap-horizontal-outline" size={18} color={COLORS.info} />
-                  <Text style={styles.actionButtonText}>Status</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => handleDeleteProperty(property.id, property.title)}
-                >
-                  <Ionicons name="trash-outline" size={18} color={COLORS.error} />
-                  <Text style={[styles.actionButtonText, { color: COLORS.error }]}>Delete</Text>
-                </TouchableOpacity>
-              </View>
+        {/* Properties List */}
+        <ScrollView style={styles.content}>
+          {filteredProperties.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="home-outline" size={64} color={COLORS.gray[300]} />
+              <Text style={styles.emptyStateText}>No properties yet</Text>
+              <TouchableOpacity 
+                style={styles.addPropertyButton}
+                onPress={() => router.push('/(landlord)/add-property')}
+              >
+                <Ionicons name="add-circle-outline" size={20} color={STAYIN.white} />
+                <Text style={styles.addPropertyButtonText}>Add Your First Property</Text>
+              </TouchableOpacity>
             </View>
-          ))
-        )}
-      </ScrollView>
-    </View>
+          ) : (
+            filteredProperties.map(property => (
+              <View key={property.id} style={styles.propertyCard}>
+                {/* Property Header */}
+                <View style={styles.propertyHeader}>
+                  <View style={styles.propertyInfo}>
+                    <Text style={styles.propertyTitle} numberOfLines={1}>{property.title}</Text>
+                    <Text style={styles.propertyAddress} numberOfLines={1}>
+                      {property.address}, {property.city}
+                    </Text>
+                  </View>
+                  <View style={styles.badges}>
+                    <View style={[styles.badge, { backgroundColor: getTypeColor(property.property_type) + '15' }]}>
+                      <Text style={[styles.badgeText, { color: getTypeColor(property.property_type) }]}>
+                        {property.property_type.replace('_', ' ')}
+                      </Text>
+                    </View>
+                    <View style={[styles.badge, { backgroundColor: getStatusColor(property.status) + '15' }]}>
+                      <Text style={[styles.badgeText, { color: getStatusColor(property.status) }]}>
+                        {property.status}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Property Details */}
+                <View style={styles.detailsRow}>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="bed-outline" size={16} color={COLORS.gray[600]} />
+                    <Text style={styles.detailText}>{property.bedrooms || 0} beds</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="water-outline" size={16} color={COLORS.gray[600]} />
+                    <Text style={styles.detailText}>{property.bathrooms || 0} baths</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="people-outline" size={16} color={COLORS.gray[600]} />
+                    <Text style={styles.detailText}>{property.max_occupancy || 0} max</Text>
+                  </View>
+                </View>
+
+                {/* Price */}
+                <Text style={styles.price}>K{property.price_per_month.toLocaleString()}/month</Text>
+
+                {/* Revenue Breakdown */}
+                <View style={styles.revenueSection}>
+                  <TouchableOpacity 
+                    style={styles.revenueSummary}
+                    onPress={() => showRevenueBreakdown(property)}
+                  >
+                    <View>
+                      <Text style={styles.revenueLabel}>Total Collected</Text>
+                      <Text style={styles.revenueAmount}>K{property.total_collected.toLocaleString()}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.netLabel}>Your Net</Text>
+                      <Text style={styles.netAmount}>K{property.net_to_owner.toLocaleString()}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={COLORS.primary} />
+                  </TouchableOpacity>
+
+                  <View style={styles.miniBreakdown}>
+                    <View style={styles.miniBreakdownItem}>
+                      <Text style={styles.miniBreakdownLabel}>Platform (25%)</Text>
+                      <Text style={styles.miniBreakdownValue}>-K{property.platform_commission.toLocaleString()}</Text>
+                    </View>
+                    <View style={styles.miniBreakdownItem}>
+                      <Text style={styles.miniBreakdownLabel}>Maintenance (15%)</Text>
+                      <Text style={styles.miniBreakdownValue}>-K{property.maintenance_fund.toLocaleString()}</Text>
+                    </View>
+                    <View style={styles.miniBreakdownItem}>
+                      <Text style={styles.miniBreakdownLabel}>App Fee (10%)</Text>
+                      <Text style={styles.miniBreakdownValue}>-K{property.application_fees.toLocaleString()}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Tenants */}
+                {property.tenant_count > 0 && (
+                  <View style={styles.tenantInfo}>
+                    <Ionicons name="people" size={16} color={COLORS.success} />
+                    <Text style={styles.tenantText}>
+                      {property.tenant_count} active tenant{property.tenant_count > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Actions */}
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => router.push(`/(landlord)/edit-property?id=${property.id}`)}
+                  >
+                    <Ionicons name="create-outline" size={18} color={COLORS.primary} />
+                    <Text style={styles.actionButtonText}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleStatusChange(property.id, property.status)}
+                  >
+                    <Ionicons name="swap-horizontal-outline" size={18} color={COLORS.info} />
+                    <Text style={styles.actionButtonText}>Status</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleDeleteProperty(property.id, property.title)}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={COLORS.error} />
+                    <Text style={[styles.actionButtonText, { color: COLORS.error }]}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </View>
+    </>
   );
 }
 
@@ -334,31 +360,27 @@ const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[200],
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.gray[900],
-  },
-  addButton: {
-    padding: 4,
+    flex: 1,
   },
 
-  // New Compact Filter Styles
+  // StayIN Gradient Header
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: STAYIN.white,
+  },
+
+  // Compact Chip-Style Type Filter
   filterWrapper: {
     paddingVertical: 12,
     backgroundColor: COLORS.background,

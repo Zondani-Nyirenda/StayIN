@@ -1,6 +1,6 @@
 // ========================================
 // FILE: app/(landlord)/edit-property.tsx
-// Edit Existing Property
+// Edit Property - StayIN Branded Gradient Header
 // ========================================
 import React, { useState, useEffect } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
   TextInput,
   Image,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,6 +23,7 @@ import { COLORS } from '../../utils/constants';
 import { useAuth } from '../../contexts/AuthContext';
 import LandlordService from '../../services/landlordService';
 import DatabaseService from '../../services/database';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const PROPERTY_TYPES = ['residential', 'student_boarding', 'commercial'] as const;
 const AMENITIES = [
@@ -36,6 +38,12 @@ const AMENITIES = [
   'Furnished',
   'Air Conditioning',
 ];
+
+// StayIN Brand Colors
+const STAYIN = {
+  primaryBlue: '#1E40AF',
+  white: '#FFFFFF',
+};
 
 export default function EditPropertyScreen() {
   const { user } = useAuth();
@@ -68,7 +76,7 @@ export default function EditPropertyScreen() {
 
     const loadProperty = async () => {
       try {
-        const db = DatabaseService.getDatabase(); // Import at top if needed
+        const db = DatabaseService.getDatabase();
         const property = await db.getFirstAsync<any>(
           `SELECT * FROM properties WHERE id = ? AND owner_id = ?`,
           [Number(id), user.id]
@@ -176,235 +184,277 @@ export default function EditPropertyScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={STAYIN.primaryBlue} />
         <Text style={styles.loadingText}>Loading property...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.gray[900]} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Edit Property</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <>
+      <StatusBar style="light" backgroundColor="transparent" translucent />
 
-      <View style={styles.form}>
-        {/* Property Type */}
-        <Text style={styles.label}>Property Type *</Text>
-        <View style={styles.typeRow}>
-          {PROPERTY_TYPES.map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.typeChip,
-                form.property_type === type && styles.typeChipActive,
-              ]}
-              onPress={() => setForm({ ...form, property_type: type })}
-            >
-              <Text
-                style={[
-                  styles.typeText,
-                  form.property_type === type && styles.typeTextActive,
-                ]}
-              >
-                {type.replace('_', ' ')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Basic Info */}
-        <Text style={styles.label}>Title *</Text>
-        <TextInput
-          style={styles.input}
-          value={form.title}
-          onChangeText={(text) => setForm({ ...form, title: text })}
-          placeholder="e.g. Modern 3-Bedroom House in Roma"
-        />
-
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={form.description}
-          onChangeText={(text) => setForm({ ...form, description: text })}
-          multiline
-          numberOfLines={4}
-          placeholder="Describe the property..."
-        />
-
-        <Text style={styles.label}>Address *</Text>
-        <TextInput
-          style={styles.input}
-          value={form.address}
-          onChangeText={(text) => setForm({ ...form, address: text })}
-          placeholder="Street address"
-        />
-
-        <Text style={styles.label}>City *</Text>
-        <TextInput
-          style={styles.input}
-          value={form.city}
-          onChangeText={(text) => setForm({ ...form, city: text })}
-          placeholder="e.g. Lusaka"
-        />
-
-        {/* Numbers */}
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Text style={styles.label}>Bedrooms</Text>
-            <TextInput
-              style={styles.input}
-              value={String(form.bedrooms)}
-              onChangeText={(text) => setForm({ ...form, bedrooms: Number(text) || 0 })}
-              keyboardType="numeric"
-            />
-          </View>
-          <View style={styles.half}>
-            <Text style={styles.label}>Bathrooms</Text>
-            <TextInput
-              style={styles.input}
-              value={String(form.bathrooms)}
-              onChangeText={(text) => setForm({ ...form, bathrooms: Number(text) || 0 })}
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
-        <Text style={styles.label}>Max Occupancy</Text>
-        <TextInput
-          style={styles.input}
-          value={String(form.max_occupancy)}
-          onChangeText={(text) => setForm({ ...form, max_occupancy: Number(text) || 1 })}
-          keyboardType="numeric"
-        />
-
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <Text style={styles.label}>Monthly Rent (K) *</Text>
-            <TextInput
-              style={styles.input}
-              value={form.price_per_month}
-              onChangeText={(text) => setForm({ ...form, price_per_month: text })}
-              keyboardType="numeric"
-              placeholder="e.g. 5000"
-            />
-          </View>
-          <View style={styles.half}>
-            <Text style={styles.label}>Deposit (K)</Text>
-            <TextInput
-              style={styles.input}
-              value={form.deposit_amount}
-              onChangeText={(text) => setForm({ ...form, deposit_amount: text })}
-              keyboardType="numeric"
-              placeholder="Optional"
-            />
-          </View>
-        </View>
-
-        {/* Amenities */}
-        <Text style={styles.label}>Amenities</Text>
-        <View style={styles.amenitiesGrid}>
-          {AMENITIES.map((amenity) => (
-            <TouchableOpacity
-              key={amenity}
-              style={[
-                styles.amenityChip,
-                form.amenities.includes(amenity) && styles.amenityChipActive,
-              ]}
-              onPress={() => toggleAmenity(amenity)}
-            >
-              <Text
-                style={[
-                  styles.amenityText,
-                  form.amenities.includes(amenity) && styles.amenityTextActive,
-                ]}
-              >
-                {amenity}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Images */}
-        <Text style={styles.label}>Photos (up to 10)</Text>
-        <TouchableOpacity style={styles.imagePicker} onPress={pickImages}>
-          <Ionicons name="camera" size={32} color={COLORS.primary} />
-          <Text style={styles.imagePickerText}>Tap to add more photos</Text>
-        </TouchableOpacity>
-
-        <View style={styles.imageGrid}>
-          {form.images.map((uri, index) => (
-            <View key={index} style={styles.imageContainer}>
-              <Image source={{ uri }} style={styles.previewImage} />
-              <TouchableOpacity
-                style={styles.removeImage}
-                onPress={() => removeImage(index)}
-              >
-                <Ionicons name="close" size={18} color={COLORS.white} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-
-        {/* Map */}
-        <Text style={styles.label}>Location on Map</Text>
-        <View style={styles.mapContainer}>
-          <MapView
-            style={styles.map}
-            region={{
-              latitude: form.latitude,
-              longitude: form.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-            onPress={(e) => {
-              const { latitude, longitude } = e.nativeEvent.coordinate;
-              setForm({ ...form, latitude, longitude });
-            }}
-          >
-            <Marker coordinate={{ latitude: form.latitude, longitude: form.longitude }} />
-          </MapView>
-        </View>
-
-        {/* Submit */}
-        <TouchableOpacity
-          style={[styles.submitButton, saving && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={saving}
+      <View style={styles.container}>
+        {/* StayIN Gradient Header */}
+        <LinearGradient
+          colors={[STAYIN.primaryBlue, '#0F172A']}
+          style={styles.headerGradient}
         >
-          {saving ? (
-            <ActivityIndicator color={COLORS.white} />
-          ) : (
-            <Text style={styles.submitText}>Save Changes</Text>
-          )}
-        </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={28} color={STAYIN.white} />
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>Edit Property</Text>
+
+            <View style={{ width: 28 }} /> {/* Spacer */}
+          </View>
+        </LinearGradient>
+
+        <ScrollView style={styles.scrollContainer}>
+          <View style={styles.form}>
+            {/* Property Type */}
+            <Text style={styles.label}>Property Type *</Text>
+            <View style={styles.typeRow}>
+              {PROPERTY_TYPES.map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.typeChip,
+                    form.property_type === type && styles.typeChipActive,
+                  ]}
+                  onPress={() => setForm({ ...form, property_type: type })}
+                >
+                  <Text
+                    style={[
+                      styles.typeText,
+                      form.property_type === type && styles.typeTextActive,
+                    ]}
+                  >
+                    {type.replace('_', ' ')}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Basic Info */}
+            <Text style={styles.label}>Title *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.title}
+              onChangeText={(text) => setForm({ ...form, title: text })}
+              placeholder="e.g. Modern 3-Bedroom House in Roma"
+            />
+
+            <Text style={styles.label}>Description</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={form.description}
+              onChangeText={(text) => setForm({ ...form, description: text })}
+              multiline
+              numberOfLines={4}
+              placeholder="Describe the property..."
+            />
+
+            <Text style={styles.label}>Address *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.address}
+              onChangeText={(text) => setForm({ ...form, address: text })}
+              placeholder="Street address"
+            />
+
+            <Text style={styles.label}>City *</Text>
+            <TextInput
+              style={styles.input}
+              value={form.city}
+              onChangeText={(text) => setForm({ ...form, city: text })}
+              placeholder="e.g. Lusaka"
+            />
+
+            {/* Numbers */}
+            <View style={styles.row}>
+              <View style={styles.half}>
+                <Text style={styles.label}>Bedrooms</Text>
+                <TextInput
+                  style={styles.input}
+                  value={String(form.bedrooms)}
+                  onChangeText={(text) => setForm({ ...form, bedrooms: Number(text) || 0 })}
+                  keyboardType="numeric"
+                />
+              </View>
+              <View style={styles.half}>
+                <Text style={styles.label}>Bathrooms</Text>
+                <TextInput
+                  style={styles.input}
+                  value={String(form.bathrooms)}
+                  onChangeText={(text) => setForm({ ...form, bathrooms: Number(text) || 0 })}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+
+            <Text style={styles.label}>Max Occupancy</Text>
+            <TextInput
+              style={styles.input}
+              value={String(form.max_occupancy)}
+              onChangeText={(text) => setForm({ ...form, max_occupancy: Number(text) || 1 })}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.row}>
+              <View style={styles.half}>
+                <Text style={styles.label}>Monthly Rent (K) *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.price_per_month}
+                  onChangeText={(text) => setForm({ ...form, price_per_month: text })}
+                  keyboardType="numeric"
+                  placeholder="e.g. 5000"
+                />
+              </View>
+              <View style={styles.half}>
+                <Text style={styles.label}>Deposit (K)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.deposit_amount}
+                  onChangeText={(text) => setForm({ ...form, deposit_amount: text })}
+                  keyboardType="numeric"
+                  placeholder="Optional"
+                />
+              </View>
+            </View>
+
+            {/* Amenities */}
+            <Text style={styles.label}>Amenities</Text>
+            <View style={styles.amenitiesGrid}>
+              {AMENITIES.map((amenity) => (
+                <TouchableOpacity
+                  key={amenity}
+                  style={[
+                    styles.amenityChip,
+                    form.amenities.includes(amenity) && styles.amenityChipActive,
+                  ]}
+                  onPress={() => toggleAmenity(amenity)}
+                >
+                  <Text
+                    style={[
+                      styles.amenityText,
+                      form.amenities.includes(amenity) && styles.amenityTextActive,
+                    ]}
+                  >
+                    {amenity}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Images */}
+            <Text style={styles.label}>Photos (up to 10)</Text>
+            <TouchableOpacity style={styles.imagePicker} onPress={pickImages}>
+              <Ionicons name="camera" size={32} color={COLORS.primary} />
+              <Text style={styles.imagePickerText}>Tap to add more photos</Text>
+            </TouchableOpacity>
+
+            <View style={styles.imageGrid}>
+              {form.images.map((uri, index) => (
+                <View key={index} style={styles.imageContainer}>
+                  <Image source={{ uri }} style={styles.previewImage} />
+                  <TouchableOpacity
+                    style={styles.removeImage}
+                    onPress={() => removeImage(index)}
+                  >
+                    <Ionicons name="close" size={18} color={COLORS.white} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+
+            {/* Map */}
+            <Text style={styles.label}>Location on Map</Text>
+            <View style={styles.mapContainer}>
+              <MapView
+                style={styles.map}
+                region={{
+                  latitude: form.latitude,
+                  longitude: form.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                onPress={(e) => {
+                  const { latitude, longitude } = e.nativeEvent.coordinate;
+                  setForm({ ...form, latitude, longitude });
+                }}
+              >
+                <Marker coordinate={{ latitude: form.latitude, longitude: form.longitude }} />
+              </MapView>
+            </View>
+
+            {/* Submit */}
+            <TouchableOpacity
+              style={[styles.submitButton, saving && styles.submitButtonDisabled]}
+              onPress={handleSubmit}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color={STAYIN.white} />
+              ) : (
+                <Text style={styles.submitText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
-    </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  centered: { justifyContent: 'center', alignItems: 'center', flex: 1 },
-  loadingText: { marginTop: 12, fontSize: 16, color: COLORS.gray[600] },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray[200],
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  title: { fontSize: 18, fontWeight: 'bold', color: COLORS.gray[900] },
-  form: { padding: 16 },
-  label: { fontSize: 15, fontWeight: '600', color: COLORS.gray[800], marginTop: 16, marginBottom: 8 },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: COLORS.gray[600],
+  },
+
+  // StayIN Gradient Header
+  headerGradient: {
+    paddingTop: 60,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: STAYIN.white,
+  },
+
+  scrollContainer: {
+    flex: 1,
+  },
+  form: {
+    padding: 16,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.gray[800],
+    marginTop: 16,
+    marginBottom: 8,
+  },
   input: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
@@ -413,10 +463,22 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 15,
   },
-  textArea: { height: 100, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', gap: 12 },
-  half: { flex: 1 },
-  typeRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  half: {
+    flex: 1,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
   typeChip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -425,10 +487,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.gray[300],
   },
-  typeChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  typeText: { fontWeight: '600', color: COLORS.gray[700] },
-  typeTextActive: { color: COLORS.white },
-  amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  typeChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  typeText: {
+    fontWeight: '600',
+    color: COLORS.gray[700],
+  },
+  typeTextActive: {
+    color: COLORS.white,
+  },
+  amenitiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   amenityChip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -437,9 +511,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.gray[300],
   },
-  amenityChipActive: { backgroundColor: COLORS.primary + '20', borderColor: COLORS.primary },
-  amenityText: { fontSize: 13, color: COLORS.gray[700] },
-  amenityTextActive: { color: COLORS.primary, fontWeight: '600' },
+  amenityChipActive: {
+    backgroundColor: COLORS.primary + '20',
+    borderColor: COLORS.primary,
+  },
+  amenityText: {
+    fontSize: 13,
+    color: COLORS.gray[700],
+  },
+  amenityTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
   imagePicker: {
     height: 120,
     backgroundColor: COLORS.gray[100],
@@ -450,10 +533,25 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gray[300],
     borderStyle: 'dashed',
   },
-  imagePickerText: { marginTop: 8, color: COLORS.primary, fontWeight: '600' },
-  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  imageContainer: { position: 'relative' },
-  previewImage: { width: 100, height: 100, borderRadius: 8 },
+  imagePickerText: {
+    marginTop: 8,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  previewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
   removeImage: {
     position: 'absolute',
     top: 4,
@@ -465,8 +563,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mapContainer: { height: 300, borderRadius: 12, overflow: 'hidden', marginVertical: 16 },
-  map: { flex: 1 },
+  mapContainer: {
+    height: 300,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginVertical: 16,
+  },
+  map: {
+    flex: 1,
+  },
   submitButton: {
     backgroundColor: COLORS.primary,
     padding: 16,
@@ -475,6 +580,12 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 40,
   },
-  submitButtonDisabled: { opacity: 0.7 },
-  submitText: { color: COLORS.white, fontSize: 16, fontWeight: 'bold' },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  submitText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
